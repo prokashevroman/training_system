@@ -75,6 +75,9 @@ importers:
       '@tanstack/react-query':
         specifier: ^5.62.7
         version: 5.101.4(react@19.2.8)
+      '@training/ai-contracts':
+        specifier: workspace:*
+        version: link:../../packages/ai-contracts
       '@training/db-types':
         specifier: workspace:*
         version: link:../../packages/db-types
