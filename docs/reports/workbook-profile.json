@@ -1,0 +1,911 @@
+{
+  "source": {
+    "file": "Hoja de cálculo sin título (2).xlsx",
+    "sha256": "5316b6b7b27045496b77c26fe04bdf5ae13feeffcf0699bf2e1353c7b795277d",
+    "sheet": "Training programm 2026",
+    "dimensions": "A1:H54",
+    "max_row": 54,
+    "max_column": 8,
+    "header_row": [
+      "Columna 1",
+      "Day 1",
+      "Day 2",
+      "Day 3",
+      "Day 4",
+      "Day 5",
+      "Day 6",
+      "Column 8"
+    ]
+  },
+  "date_derivation": {
+    "anchor": "2025-12-29",
+    "rule": "week_start = 2025-12-29 + 7 * (week_number - 1); local_date = week_start + (day_index - 1)",
+    "week_number_from_row": "row - 1",
+    "day_index_from_col": "col - 1",
+    "first_date": "2025-12-29",
+    "last_date": "2026-08-01"
+  },
+  "structure": {
+    "non_empty_day_cells": 170,
+    "weeks_with_data": 31,
+    "rows_with_data": [
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16,
+      17,
+      18,
+      19,
+      20,
+      21,
+      22,
+      23,
+      24,
+      25,
+      26,
+      27,
+      28,
+      29,
+      30,
+      31,
+      32
+    ],
+    "rows_with_data_compact": "2-32",
+    "empty_rows": [
+      33,
+      34,
+      35,
+      36,
+      37,
+      38,
+      39,
+      40,
+      41,
+      42,
+      43,
+      44,
+      45,
+      46,
+      47,
+      48,
+      49,
+      50,
+      51,
+      52,
+      53,
+      54
+    ],
+    "empty_rows_compact": "33-54",
+    "week_labels": 53,
+    "label_rows_compact": "2-54",
+    "cells_per_row": {
+      "2": 3,
+      "3": 5,
+      "4": 6,
+      "5": 6,
+      "6": 5,
+      "7": 4,
+      "8": 6,
+      "9": 4,
+      "10": 5,
+      "11": 5,
+      "12": 3,
+      "13": 6,
+      "14": 5,
+      "15": 5,
+      "16": 5,
+      "17": 5,
+      "18": 6,
+      "19": 6,
+      "20": 6,
+      "21": 6,
+      "22": 7,
+      "23": 6,
+      "24": 7,
+      "25": 7,
+      "26": 5,
+      "27": 4,
+      "28": 6,
+      "29": 6,
+      "30": 7,
+      "31": 7,
+      "32": 6
+    },
+    "cells_per_day_index": {
+      "1": 31,
+      "2": 31,
+      "3": 31,
+      "4": 29,
+      "5": 26,
+      "6": 17,
+      "7": 5
+    },
+    "cells_per_weekday": {
+      "Monday": 31,
+      "Tuesday": 31,
+      "Wednesday": 31,
+      "Thursday": 29,
+      "Friday": 26,
+      "Saturday": 17,
+      "Sunday": 5
+    }
+  },
+  "corpus": {
+    "total_characters": 15518,
+    "total_lines": 653,
+    "non_empty_lines": 550,
+    "blank_line_blocks": 269,
+    "cell_length": {
+      "min": 16,
+      "median": 67.0,
+      "mean": 91.3,
+      "p90": 176,
+      "max": 387
+    },
+    "length_distribution": [
+      {
+        "label": "0-25",
+        "min": 0,
+        "max": 25,
+        "cells": 18,
+        "share": 0.1059
+      },
+      {
+        "label": "26-50",
+        "min": 26,
+        "max": 50,
+        "cells": 40,
+        "share": 0.2353
+      },
+      {
+        "label": "51-75",
+        "min": 51,
+        "max": 75,
+        "cells": 39,
+        "share": 0.2294
+      },
+      {
+        "label": "76-100",
+        "min": 76,
+        "max": 100,
+        "cells": 29,
+        "share": 0.1706
+      },
+      {
+        "label": "101-150",
+        "min": 101,
+        "max": 150,
+        "cells": 22,
+        "share": 0.1294
+      },
+      {
+        "label": "151-200",
+        "min": 151,
+        "max": 200,
+        "cells": 6,
+        "share": 0.0353
+      },
+      {
+        "label": "201-300",
+        "min": 201,
+        "max": 300,
+        "cells": 7,
+        "share": 0.0412
+      },
+      {
+        "label": "301+",
+        "min": 301,
+        "max": null,
+        "cells": 9,
+        "share": 0.0529
+      }
+    ]
+  },
+  "week_label_cross_check": {
+    "checked": 53,
+    "passed": 53,
+    "failed": 0,
+    "labels": [
+      {
+        "row": 2,
+        "week_number": 1,
+        "label": "Week 01 Dec 29, 2025 Jan 4",
+        "computed_start": "2025-12-29",
+        "computed_end": "2026-01-04",
+        "label_dates": [
+          "12/29",
+          "1/4"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 3,
+        "week_number": 2,
+        "label": "Week 02 Jan 5 Jan 11",
+        "computed_start": "2026-01-05",
+        "computed_end": "2026-01-11",
+        "label_dates": [
+          "1/5",
+          "1/11"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 4,
+        "week_number": 3,
+        "label": "Week 03 Jan 12 Jan 18",
+        "computed_start": "2026-01-12",
+        "computed_end": "2026-01-18",
+        "label_dates": [
+          "1/12",
+          "1/18"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 5,
+        "week_number": 4,
+        "label": "Week 04 Jan 19 Jan 25",
+        "computed_start": "2026-01-19",
+        "computed_end": "2026-01-25",
+        "label_dates": [
+          "1/19",
+          "1/25"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 6,
+        "week_number": 5,
+        "label": "Week 05 Jan 26 Feb 1",
+        "computed_start": "2026-01-26",
+        "computed_end": "2026-02-01",
+        "label_dates": [
+          "1/26",
+          "2/1"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 7,
+        "week_number": 6,
+        "label": "Week 06 Feb 2 Feb 8",
+        "computed_start": "2026-02-02",
+        "computed_end": "2026-02-08",
+        "label_dates": [
+          "2/2",
+          "2/8"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 8,
+        "week_number": 7,
+        "label": "Week 07 Feb 9 Feb 15",
+        "computed_start": "2026-02-09",
+        "computed_end": "2026-02-15",
+        "label_dates": [
+          "2/9",
+          "2/15"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 9,
+        "week_number": 8,
+        "label": "Week 08 Feb 16 Feb 22",
+        "computed_start": "2026-02-16",
+        "computed_end": "2026-02-22",
+        "label_dates": [
+          "2/16",
+          "2/22"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 10,
+        "week_number": 9,
+        "label": "Week 09 Feb 23 March 1",
+        "computed_start": "2026-02-23",
+        "computed_end": "2026-03-01",
+        "label_dates": [
+          "2/23",
+          "3/1"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 11,
+        "week_number": 10,
+        "label": "Week 10 March 2 March 8",
+        "computed_start": "2026-03-02",
+        "computed_end": "2026-03-08",
+        "label_dates": [
+          "3/2",
+          "3/8"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 12,
+        "week_number": 11,
+        "label": "Week 11 March 9 March 15",
+        "computed_start": "2026-03-09",
+        "computed_end": "2026-03-15",
+        "label_dates": [
+          "3/9",
+          "3/15"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 13,
+        "week_number": 12,
+        "label": "Week 12 March 16 March 22",
+        "computed_start": "2026-03-16",
+        "computed_end": "2026-03-22",
+        "label_dates": [
+          "3/16",
+          "3/22"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 14,
+        "week_number": 13,
+        "label": "Week 13 March 23 March 29",
+        "computed_start": "2026-03-23",
+        "computed_end": "2026-03-29",
+        "label_dates": [
+          "3/23",
+          "3/29"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 15,
+        "week_number": 14,
+        "label": "Week 14 March 30 April 5",
+        "computed_start": "2026-03-30",
+        "computed_end": "2026-04-05",
+        "label_dates": [
+          "3/30",
+          "4/5"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 16,
+        "week_number": 15,
+        "label": "Week 15 April 6 April 12",
+        "computed_start": "2026-04-06",
+        "computed_end": "2026-04-12",
+        "label_dates": [
+          "4/6",
+          "4/12"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 17,
+        "week_number": 16,
+        "label": "Week 16 April 13 April 19",
+        "computed_start": "2026-04-13",
+        "computed_end": "2026-04-19",
+        "label_dates": [
+          "4/13",
+          "4/19"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 18,
+        "week_number": 17,
+        "label": "Week 17 April 20 April 26",
+        "computed_start": "2026-04-20",
+        "computed_end": "2026-04-26",
+        "label_dates": [
+          "4/20",
+          "4/26"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 19,
+        "week_number": 18,
+        "label": "Week 18 April 27 May 3",
+        "computed_start": "2026-04-27",
+        "computed_end": "2026-05-03",
+        "label_dates": [
+          "4/27",
+          "5/3"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 20,
+        "week_number": 19,
+        "label": "Week 19 May 4 May 10",
+        "computed_start": "2026-05-04",
+        "computed_end": "2026-05-10",
+        "label_dates": [
+          "5/4",
+          "5/10"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 21,
+        "week_number": 20,
+        "label": "Week 20 May 11 May 17",
+        "computed_start": "2026-05-11",
+        "computed_end": "2026-05-17",
+        "label_dates": [
+          "5/11",
+          "5/17"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 22,
+        "week_number": 21,
+        "label": "Week 21 May 18 May 24",
+        "computed_start": "2026-05-18",
+        "computed_end": "2026-05-24",
+        "label_dates": [
+          "5/18",
+          "5/24"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 23,
+        "week_number": 22,
+        "label": "Week 22 May 25 May 31",
+        "computed_start": "2026-05-25",
+        "computed_end": "2026-05-31",
+        "label_dates": [
+          "5/25",
+          "5/31"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 24,
+        "week_number": 23,
+        "label": "Week 23 June 1 June 7",
+        "computed_start": "2026-06-01",
+        "computed_end": "2026-06-07",
+        "label_dates": [
+          "6/1",
+          "6/7"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 25,
+        "week_number": 24,
+        "label": "Week 24 June 8 June 14",
+        "computed_start": "2026-06-08",
+        "computed_end": "2026-06-14",
+        "label_dates": [
+          "6/8",
+          "6/14"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 26,
+        "week_number": 25,
+        "label": "Week 25 June 15 June 21",
+        "computed_start": "2026-06-15",
+        "computed_end": "2026-06-21",
+        "label_dates": [
+          "6/15",
+          "6/21"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 27,
+        "week_number": 26,
+        "label": "Week 26 June 22 June 28",
+        "computed_start": "2026-06-22",
+        "computed_end": "2026-06-28",
+        "label_dates": [
+          "6/22",
+          "6/28"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 28,
+        "week_number": 27,
+        "label": "Week 27 June 29 July 5",
+        "computed_start": "2026-06-29",
+        "computed_end": "2026-07-05",
+        "label_dates": [
+          "6/29",
+          "7/5"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 29,
+        "week_number": 28,
+        "label": "Week 28 July 6 July 12",
+        "computed_start": "2026-07-06",
+        "computed_end": "2026-07-12",
+        "label_dates": [
+          "7/6",
+          "7/12"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 30,
+        "week_number": 29,
+        "label": "Week 29 July 13 July 19",
+        "computed_start": "2026-07-13",
+        "computed_end": "2026-07-19",
+        "label_dates": [
+          "7/13",
+          "7/19"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 31,
+        "week_number": 30,
+        "label": "Week 30 July 20 July 26",
+        "computed_start": "2026-07-20",
+        "computed_end": "2026-07-26",
+        "label_dates": [
+          "7/20",
+          "7/26"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 32,
+        "week_number": 31,
+        "label": "Week 31 July 27 Aug 2",
+        "computed_start": "2026-07-27",
+        "computed_end": "2026-08-02",
+        "label_dates": [
+          "7/27",
+          "8/2"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 33,
+        "week_number": 32,
+        "label": "Week 32 Aug 3 Aug 9",
+        "computed_start": "2026-08-03",
+        "computed_end": "2026-08-09",
+        "label_dates": [
+          "8/3",
+          "8/9"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 34,
+        "week_number": 33,
+        "label": "Week 33 Aug 10 Aug 16",
+        "computed_start": "2026-08-10",
+        "computed_end": "2026-08-16",
+        "label_dates": [
+          "8/10",
+          "8/16"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 35,
+        "week_number": 34,
+        "label": "Week 34 Aug 17 Aug 23",
+        "computed_start": "2026-08-17",
+        "computed_end": "2026-08-23",
+        "label_dates": [
+          "8/17",
+          "8/23"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 36,
+        "week_number": 35,
+        "label": "Week 35 Aug 24 Aug 30",
+        "computed_start": "2026-08-24",
+        "computed_end": "2026-08-30",
+        "label_dates": [
+          "8/24",
+          "8/30"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 37,
+        "week_number": 36,
+        "label": "Week 36 Aug 31 Sept 6",
+        "computed_start": "2026-08-31",
+        "computed_end": "2026-09-06",
+        "label_dates": [
+          "8/31",
+          "9/6"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 38,
+        "week_number": 37,
+        "label": "Week 37 Sept 7 Sept 13",
+        "computed_start": "2026-09-07",
+        "computed_end": "2026-09-13",
+        "label_dates": [
+          "9/7",
+          "9/13"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 39,
+        "week_number": 38,
+        "label": "Week 38 Sept 14 Sept 20",
+        "computed_start": "2026-09-14",
+        "computed_end": "2026-09-20",
+        "label_dates": [
+          "9/14",
+          "9/20"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 40,
+        "week_number": 39,
+        "label": "Week 39 Sept 21 Sept 27",
+        "computed_start": "2026-09-21",
+        "computed_end": "2026-09-27",
+        "label_dates": [
+          "9/21",
+          "9/27"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 41,
+        "week_number": 40,
+        "label": "Week 40 Sept 28 Oct 4",
+        "computed_start": "2026-09-28",
+        "computed_end": "2026-10-04",
+        "label_dates": [
+          "9/28",
+          "10/4"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 42,
+        "week_number": 41,
+        "label": "Week 41 Oct 5 Oct 11",
+        "computed_start": "2026-10-05",
+        "computed_end": "2026-10-11",
+        "label_dates": [
+          "10/5",
+          "10/11"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 43,
+        "week_number": 42,
+        "label": "Week 42 Oct 12 Oct 18",
+        "computed_start": "2026-10-12",
+        "computed_end": "2026-10-18",
+        "label_dates": [
+          "10/12",
+          "10/18"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 44,
+        "week_number": 43,
+        "label": "Week 43 Oct 19 Oct 25",
+        "computed_start": "2026-10-19",
+        "computed_end": "2026-10-25",
+        "label_dates": [
+          "10/19",
+          "10/25"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 45,
+        "week_number": 44,
+        "label": "Week 44 Oct 26 Nov 1",
+        "computed_start": "2026-10-26",
+        "computed_end": "2026-11-01",
+        "label_dates": [
+          "10/26",
+          "11/1"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 46,
+        "week_number": 45,
+        "label": "Week 45 Nov 2 Nov 8",
+        "computed_start": "2026-11-02",
+        "computed_end": "2026-11-08",
+        "label_dates": [
+          "11/2",
+          "11/8"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 47,
+        "week_number": 46,
+        "label": "Week 46 Nov 9 Nov 15",
+        "computed_start": "2026-11-09",
+        "computed_end": "2026-11-15",
+        "label_dates": [
+          "11/9",
+          "11/15"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 48,
+        "week_number": 47,
+        "label": "Week 47 Nov 16 Nov 22",
+        "computed_start": "2026-11-16",
+        "computed_end": "2026-11-22",
+        "label_dates": [
+          "11/16",
+          "11/22"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 49,
+        "week_number": 48,
+        "label": "Week 48 Nov 23 Nov 29",
+        "computed_start": "2026-11-23",
+        "computed_end": "2026-11-29",
+        "label_dates": [
+          "11/23",
+          "11/29"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 50,
+        "week_number": 49,
+        "label": "Week 49 Nov 30 Dec 6",
+        "computed_start": "2026-11-30",
+        "computed_end": "2026-12-06",
+        "label_dates": [
+          "11/30",
+          "12/6"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 51,
+        "week_number": 50,
+        "label": "Week 50 Dec 7 Dec 13",
+        "computed_start": "2026-12-07",
+        "computed_end": "2026-12-13",
+        "label_dates": [
+          "12/7",
+          "12/13"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 52,
+        "week_number": 51,
+        "label": "Week 51 Dec 14 Dec 20",
+        "computed_start": "2026-12-14",
+        "computed_end": "2026-12-20",
+        "label_dates": [
+          "12/14",
+          "12/20"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 53,
+        "week_number": 52,
+        "label": "Week 52 Dec 21 Dec 27",
+        "computed_start": "2026-12-21",
+        "computed_end": "2026-12-27",
+        "label_dates": [
+          "12/21",
+          "12/27"
+        ],
+        "ok": true,
+        "problems": []
+      },
+      {
+        "row": 54,
+        "week_number": 53,
+        "label": "Week 53 Dec 28 Jan 3, 2027",
+        "computed_start": "2026-12-28",
+        "computed_end": "2027-01-03",
+        "label_dates": [
+          "12/28",
+          "1/3"
+        ],
+        "ok": true,
+        "problems": []
+      }
+    ]
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@training/import-workbook",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "inspect": "uv run --project . python python/inspect_workbook.py",
+    "extract": "uv run --project . python python/extract.py",
+    "run:import": "tsx src/cli.ts",
+    "reconcile": "tsx src/cli.ts reconcile"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.47.10",
+    "@training/domain": "workspace:*",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}

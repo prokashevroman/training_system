@@ -1,0 +1,16 @@
+[project]
+name = "import-workbook"
+version = "0.1.0"
+description = "Reads the source training workbook (xlsx) and emits a structural profile plus one JSONL record per non-empty day cell. Parsing happens later, in TypeScript."
+requires-python = ">=3.12"
+dependencies = [
+    "openpyxl>=3.1.5",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["python"]
