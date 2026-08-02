@@ -153,9 +153,10 @@ describe("corpus-wide invariants", () => {
 
   it("numbers unit ordinals from 1 with no gaps", () => {
     for (const { id, result } of all) {
-      expect(result.units.map((u) => u.ordinal), id).toEqual(
-        result.units.map((_, i) => i + 1),
-      );
+      expect(
+        result.units.map((u) => u.ordinal),
+        id,
+      ).toEqual(result.units.map((_, i) => i + 1));
     }
   });
 

@@ -384,8 +384,18 @@ export function classifyLine(line: string): LineClassification {
     };
   }
 
-  return { kind: "note", modality: null, objective: "unknown", matcher: "fallback.note", confidence: 0.2 };
+  return {
+    kind: "note",
+    modality: null,
+    objective: "unknown",
+    matcher: "fallback.note",
+    confidence: 0.2,
+  };
 }
 
 /** Kinds that never carry a session on their own; they attach to what precedes. */
-export const ATTACHING_KINDS: ReadonlySet<LineKind> = new Set<LineKind>(["metric", "note", "unknown"]);
+export const ATTACHING_KINDS: ReadonlySet<LineKind> = new Set<LineKind>([
+  "metric",
+  "note",
+  "unknown",
+]);

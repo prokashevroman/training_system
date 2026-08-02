@@ -807,7 +807,10 @@ const ALIAS_SEEDS: readonly AliasSeed[] = [
     en: ["romanian deadlift", "barbell romanian deadlift", "romanian deadlifts"],
     abbr: ["rdl"],
   },
-  { slug: "single-leg-rdl", en: ["single-leg rdl", "single leg rdl", "single-leg romanian deadlift"] },
+  {
+    slug: "single-leg-rdl",
+    en: ["single-leg rdl", "single leg rdl", "single-leg romanian deadlift"],
+  },
   { slug: "hip-thrusts", en: ["hip thrusts", "hip thrust", "glute bridge"] },
   { slug: "cable-leg-curl", en: ["cable leg curl", "leg curl", "leg curls"] },
   {
@@ -992,7 +995,10 @@ const ALIAS_SEEDS: readonly AliasSeed[] = [
   { slug: "kayaking", en: ["kayaking", "light kayaking", "kayak"] },
   { slug: "dance", en: ["dance training", "dance", "dancing"] },
   { slug: "stretching", en: ["stretching", "stretch", "rolling and stretching"] },
-  { slug: "foam-rolling", en: ["foam rolling", "rolling", "rolling shoulders", "rolling buttocks"] },
+  {
+    slug: "foam-rolling",
+    en: ["foam rolling", "rolling", "rolling shoulders", "rolling buttocks"],
+  },
   { slug: "joint-mobility", en: ["joint mobility", "mobility"] },
   {
     slug: "lat-stretch",

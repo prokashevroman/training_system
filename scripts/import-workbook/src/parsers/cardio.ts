@@ -198,9 +198,10 @@ const INTERVAL_PACE_LIST = /^fast\s+intervals?\s+pace\s*[:=]\s*(.+)$/i;
  * per-interval data; everything else is a single steady effort and is left on
  * the activity rather than fabricated into intervals.
  */
-export function extractIntervals(
-  lines: readonly string[],
-): { intervals: CardioIntervalSeed[]; consumed: string[] } {
+export function extractIntervals(lines: readonly string[]): {
+  intervals: CardioIntervalSeed[];
+  consumed: string[];
+} {
   const intervals: CardioIntervalSeed[] = [];
   const consumed: string[] = [];
 

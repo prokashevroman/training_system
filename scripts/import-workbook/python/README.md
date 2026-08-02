@@ -23,12 +23,12 @@ health data, pinned by `data/source/MANIFEST.sha256`); override with
 
 ## Files
 
-| File                     | Role                                                                                                              |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `workbook_dates.py`      | Date derivation and the week-label cross-check. A mirror of `packages/domain/src/workbook.ts`.                    |
-| `extract.py`             | Reads the workbook; writes `data/staging/cells.jsonl`. Also owns the reader that `inspect_workbook.py` imports.   |
-| `inspect_workbook.py`    | Writes `docs/reports/workbook-profile.{md,json}` — structure and counts only, never cell text.                    |
-| `test_workbook_dates.py` | Pins the same fixtures as `packages/domain/src/workbook.test.ts`, so the two implementations cannot drift apart.  |
+| File                     | Role                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `workbook_dates.py`      | Date derivation and the week-label cross-check. A mirror of `packages/domain/src/workbook.ts`.                   |
+| `extract.py`             | Reads the workbook; writes `data/staging/cells.jsonl`. Also owns the reader that `inspect_workbook.py` imports.  |
+| `inspect_workbook.py`    | Writes `docs/reports/workbook-profile.{md,json}` — structure and counts only, never cell text.                   |
+| `test_workbook_dates.py` | Pins the same fixtures as `packages/domain/src/workbook.test.ts`, so the two implementations cannot drift apart. |
 
 `inspect_workbook.py` importing the reader from `extract.py` is deliberate: the
 profile's "170 non-empty cells" and the extractor's "170 records" are only a

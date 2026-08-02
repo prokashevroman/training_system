@@ -92,8 +92,9 @@ describe("load scope — the distinction that must not collapse", () => {
   });
 
   it("treats `weight 5` and `rowing on 7` as machine settings too", () => {
-    expect(parse("Single-arm lateral raise cable, 3 sets: 3*15 each hand weight 5")!.specs[0]!.load)
-      .toMatchObject({ scope: "machine_setting", kg: null });
+    expect(
+      parse("Single-arm lateral raise cable, 3 sets: 3*15 each hand weight 5")!.specs[0]!.load,
+    ).toMatchObject({ scope: "machine_setting", kg: null });
   });
 
   // Acceptance criterion 13.

@@ -371,12 +371,8 @@ export function parseCell(input: CellInput): CellParseResult {
     });
   }
 
-  const consumedLines = outcomes
-    .filter((o) => o.disposition !== "unconsumed")
-    .map((o) => o.line);
-  const unconsumedLines = outcomes
-    .filter((o) => o.disposition === "unconsumed")
-    .map((o) => o.line);
+  const consumedLines = outcomes.filter((o) => o.disposition !== "unconsumed").map((o) => o.line);
+  const unconsumedLines = outcomes.filter((o) => o.disposition === "unconsumed").map((o) => o.line);
 
   return {
     locator: cellLocator(input.row, input.col),

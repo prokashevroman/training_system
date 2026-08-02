@@ -47,7 +47,11 @@ interface Matcher {
   build: (m: RegExpExecArray, line: string) => StrengthParse | null;
 }
 
-const cleanName = (s: string): string => s.replace(/[,:;\s]+$/, "").replace(/^[,:;\s]+/, "").trim();
+const cleanName = (s: string): string =>
+  s
+    .replace(/[,:;\s]+$/, "")
+    .replace(/^[,:;\s]+/, "")
+    .trim();
 
 /** `2:00`-style holds: `Plank: 4x1 min`, `1 minute dead hang`. */
 function holdFrom(text: string): number | null {
@@ -90,12 +94,15 @@ function parseDetailEntry(
   }
 
   // Weight-first: `80kg x6`, `65kg x6`. Always weight then reps.
-  const weightFirst = new RegExp(
-    `^(\\d+(?:\\.\\d+)?)\\s*${WEIGHT_UNIT}\\s*x\\s*(\\d+)$`,
-    "i",
-  ).exec(text);
+  const weightFirst = new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*${WEIGHT_UNIT}\\s*x\\s*(\\d+)$`, "i").exec(
+    text,
+  );
   if (weightFirst) {
-    return mk(headerSets, Number(weightFirst[3]), weight(weightFirst[1]!, weightFirst[2], text, scope));
+    return mk(
+      headerSets,
+      Number(weightFirst[3]),
+      weight(weightFirst[1]!, weightFirst[2], text, scope),
+    );
   }
 
   // `x95` — no count, so the weight applies to every set the header declared.
@@ -278,7 +285,16 @@ const MATCHERS: Matcher[] = [
     confidence: 0.95,
     re: /^(.+?)[,:]?\s*(\d+)\s*x\s*(\d+)\s*:\s*(.+)$/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "sets", "strength.sets-x-reps-colon-detail", 0.95, line),
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        Number(m[3]),
+        m[4]!,
+        "sets",
+        "strength.sets-x-reps-colon-detail",
+        0.95,
+        line,
+      ),
   },
   {
     // `Back squats: 4 sets x3: 3x95; 1x100`
@@ -286,7 +302,16 @@ const MATCHERS: Matcher[] = [
     confidence: 0.95,
     re: /^(.+?)[,:]?\s*(\d+)\s*sets?\s*x\s*(\d+)\s*(?:reps?)?\s*:\s*(.+)$/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "sets", "strength.n-sets-x-reps-colon-detail", 0.95, line),
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        Number(m[3]),
+        m[4]!,
+        "sets",
+        "strength.n-sets-x-reps-colon-detail",
+        0.95,
+        line,
+      ),
   },
   {
     // `Bench press: 4 sets: 4x70; 3 - 3x75` / `Back squat, 4 sets: 80kg x6`
@@ -295,7 +320,16 @@ const MATCHERS: Matcher[] = [
     confidence: 0.9,
     re: /^(.+?)[,:]?\s*(\d+)\s*sets?\s*:\s*(.+)$/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), null, m[3]!, "reps", "strength.n-sets-colon-detail", 0.9, line),
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        null,
+        m[3]!,
+        "reps",
+        "strength.n-sets-colon-detail",
+        0.9,
+        line,
+      ),
   },
   {
     // `Cable leg curl, 3 sets x15 reps each leg (7.5kg)`
@@ -304,7 +338,16 @@ const MATCHERS: Matcher[] = [
     confidence: 0.9,
     re: /^(.+?)[,:]?\s*(\d+)\s*sets?\s*x\s*(\d+)\s*(?:reps?)?\b(.*)$/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "sets", "strength.n-sets-x-reps-trailing-load", 0.9, line) ??
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        Number(m[3]),
+        m[4]!,
+        "sets",
+        "strength.n-sets-x-reps-trailing-load",
+        0.9,
+        line,
+      ) ??
       simple(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "strength.n-sets-x-reps-trailing-load", 0.9),
   },
   {
@@ -346,7 +389,16 @@ const MATCHERS: Matcher[] = [
     confidence: 0.92,
     re: /^(.+?)[,:]?\s*(\d+)\s*x\s*(\d+)\s*\(([^)]*)\)/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "sets", "strength.sets-x-reps-paren-load", 0.92, line) ??
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        Number(m[3]),
+        m[4]!,
+        "sets",
+        "strength.sets-x-reps-paren-load",
+        0.92,
+        line,
+      ) ??
       simple(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "strength.sets-x-reps-paren-load", 0.92),
   },
   {
@@ -354,7 +406,8 @@ const MATCHERS: Matcher[] = [
     name: "strength.leading-sets-x-reps",
     confidence: 0.88,
     re: /^(\d+)\s*x\s*(\d+)\s+([a-z].*)$/i,
-    build: (m) => simple(m[3]!, Number(m[1]), Number(m[2]), m[3]!, "strength.leading-sets-x-reps", 0.88),
+    build: (m) =>
+      simple(m[3]!, Number(m[1]), Number(m[2]), m[3]!, "strength.leading-sets-x-reps", 0.88),
   },
   {
     // `Bench press 4x4 (70kg)` with no colon, `Back squat 4x4: 90kg`
@@ -362,14 +415,26 @@ const MATCHERS: Matcher[] = [
     confidence: 0.85,
     re: /^(.+?)[,:]?\s*(\d+)\s*x\s*(\d+)\b(.*)$/i,
     build: (m, line) =>
-      fromDetail(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "sets", "strength.sets-x-reps-trailing-load", 0.85, line) ??
+      fromDetail(
+        m[1]!,
+        Number(m[2]),
+        Number(m[3]),
+        m[4]!,
+        "sets",
+        "strength.sets-x-reps-trailing-load",
+        0.85,
+        line,
+      ) ??
       simple(m[1]!, Number(m[2]), Number(m[3]), m[4]!, "strength.sets-x-reps-trailing-load", 0.85),
   },
   {
     // `4x155lb` under a bare `Bench press:` header — reps x weight, no sets.
     name: "strength.reps-x-weight-unit",
     confidence: 0.8,
-    re: new RegExp(`^(\\d+)\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*${WEIGHT_UNIT}(?:\\s*x\\s*(\\d+))?$`, "i"),
+    re: new RegExp(
+      `^(\\d+)\\s*x\\s*(\\d+(?:\\.\\d+)?)\\s*${WEIGHT_UNIT}(?:\\s*x\\s*(\\d+))?$`,
+      "i",
+    ),
     build: (m) => {
       const scope = detectScope(m[0], "");
       const load = weight(m[2]!, m[3], m[0], scope);
@@ -407,9 +472,7 @@ const MATCHERS: Matcher[] = [
       const load = bareLoad(value, m[0], "total");
       return {
         exerciseText: "",
-        specs: [
-          { sets: 1, reps: Number(m[1]), holdSeconds: null, load, originalText: m[0] },
-        ],
+        specs: [{ sets: 1, reps: Number(m[1]), holdSeconds: null, load, originalText: m[0] }],
         matcher: "strength.reps-x-bare-weight",
         confidence: 0.6,
         warnings: load.warnings,
@@ -514,7 +577,10 @@ export function parseStrengthLine(line: string): StrengthParse | null {
 }
 
 /** Expands set specs into one record per performed set, in source order. */
-export function expandSets(parse: StrengthParse, startIndex = 1): {
+export function expandSets(
+  parse: StrengthParse,
+  startIndex = 1,
+): {
   setIndex: number;
   reps: number | null;
   holdSeconds: number | null;

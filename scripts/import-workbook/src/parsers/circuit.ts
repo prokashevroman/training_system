@@ -41,7 +41,11 @@ function splitInline(text: string): string[] {
     .filter((s) => s.length > 0);
 }
 
-function movement(line: string, order: number, sharedLoadText: string | null): CircuitMovementDraft {
+function movement(
+  line: string,
+  order: number,
+  sharedLoadText: string | null,
+): CircuitMovementDraft {
   const text = line.trim();
 
   // `10 kkal row` / `15 kkal bike (rogue)` — a calorie target, not reps.
@@ -87,7 +91,10 @@ export interface CircuitParse {
  */
 export function parseCircuitUnit(lines: readonly string[]): CircuitParse | null {
   const first = lines[0]?.trim() ?? "";
-  const rest = lines.slice(1).map((l) => l.trim()).filter((l) => l.length > 0);
+  const rest = lines
+    .slice(1)
+    .map((l) => l.trim())
+    .filter((l) => l.length > 0);
   const warnings: ParseWarning[] = [];
   const joined = lines.join("\n");
 

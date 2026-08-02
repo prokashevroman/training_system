@@ -41,7 +41,8 @@ const VEST_MENTION = /\bvest\b/i;
 const NO_VEST = /\bno\s+vest\b/i;
 
 /** `(29:15 after the start of pull ups)` / `(finished at 39:56)` / `(10:41 finished after started them)` */
-const CUMULATIVE_MARKER = /\b(?:after\s+the\s+start|after\s+started|finished\s+at|finished\s+after)\b/i;
+const CUMULATIVE_MARKER =
+  /\b(?:after\s+the\s+start|after\s+started|finished\s+at|finished\s+after)\b/i;
 /** `started doing sets of 4 at 30, sets of 3 at 38` */
 const PARTITION = /\bstarted\s+doing\s+sets[^)]*/i;
 
@@ -52,7 +53,10 @@ export interface BenchmarkParse {
   warnings: ParseWarning[];
 }
 
-function slugFor(qualifier: string | undefined, isCindy: boolean): {
+function slugFor(
+  qualifier: string | undefined,
+  isCindy: boolean,
+): {
   slug: string;
   variant: string | null;
 } {
@@ -95,11 +99,7 @@ export function parseBenchmarkUnit(lines: readonly string[]): BenchmarkParse | n
   const vestKg = vest?.[1] ? parseDecimal(vest[1]) : null;
   if (vestKg === null && VEST_MENTION.test(first) && !NO_VEST.test(first)) {
     warnings.push(
-      warn(
-        "PARTIAL_PARSE",
-        `A vest was worn but its weight is not stated on this line.`,
-        first,
-      ),
+      warn("PARTIAL_PARSE", `A vest was worn but its weight is not stated on this line.`, first),
     );
   }
 
