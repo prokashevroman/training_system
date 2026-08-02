@@ -55,7 +55,8 @@ interface Flags {
 }
 
 function parseArgs(argv: string[]): Flags {
-  const positional = argv.filter((a) => !a.startsWith("--"));
+  // A bare `--` is pnpm's argument separator, not a flag and not a stage.
+  const positional = argv.filter((a) => a !== "--" && !a.startsWith("--"));
   const has = (name: string) => argv.includes(`--${name}`);
   const value = (name: string): string | null => {
     const inline = argv.find((a) => a.startsWith(`--${name}=`));
@@ -64,7 +65,11 @@ function parseArgs(argv: string[]): Flags {
     return i >= 0 && argv[i + 1] && !argv[i + 1]!.startsWith("--") ? argv[i + 1]! : null;
   };
 
-  const stage = (positional[0] ?? "parse") as Stage;
+  // `apply` is the default so the documented `pnpm import:run -- --local`
+  // works: pnpm inserts a bare `--` separator, which leaves no positional
+  // stage at all. With a `parse` default that invocation silently did nothing
+  // but re-parse, and reported success.
+  const stage = (positional[0] ?? "apply") as Stage;
   if (!STAGES.includes(stage)) {
     throw new Error(`Unknown stage "${stage}". Expected one of: ${STAGES.join(" | ")}`);
   }
