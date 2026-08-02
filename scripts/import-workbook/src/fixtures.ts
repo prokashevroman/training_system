@@ -1,19 +1,20 @@
 /**
  * Verbatim fixtures from the source workbook.
  *
- * GENERATED — see docs/EXCEL_IMPORT.md. Regenerating by hand is error-prone:
- * these strings carry the exact whitespace, the Cyrillic `х` in R12C2, the
+ * GENERATED — see docs/EXCEL_IMPORT.md. Transcribing these by hand is
+ * error-prone: they carry the exact whitespace, the Cyrillic `х` in R12C2, the
  * `×` in R24C4, the unbalanced `"` in R8C4 and the leading blank line in
  * R30C2. Every parser assertion in this package traces to one of them.
  *
- * Only these twenty cells are committed, not the whole corpus, which stays in
- * the gitignored data/source/ as personal health data.
+ * Only these cells are committed, not the whole corpus, which stays in the
+ * gitignored data/source/ as personal health data.
  */
 export const CELLS: Readonly<Record<string, string>> = {
   R2C3: "12 rounds cindy bodyweight: \n50 jumping jacks\n4 pull ups strict\n10 push ups\n15 squats",
   R3C2: "Back squat 5x5: 1x80, 3x85, 1x90\nDeadlift 5x4: 1x90, 3x95, 1x97,5",
   R5C6: "Treadmill easy run 6 km, speed = 7.0",
   R8C4: '10 minutes VO2 cardio (Air bike)\n"Cindy 5 rounds: \n5 pull ups on climbers bar\n10 push ups\n15 squats ',
+  R11C4: "10 km outdoor run\n6:49 per km\ncadencia - 159\nfc promedio - 152lpm",
   R12C2:
     "Bench press: \n4х155lb\n5x155lb x2\n4x165\n\n5 rounds: 2 min row approx 900 , 10 deadlifts with DB 2x45lb",
   R12C4: "Back squat: 4x4 210 or 215lb\nRun 4.33km on a treadmill",
@@ -24,6 +25,10 @@ export const CELLS: Readonly<Record<string, string>> = {
   R17C3: "Back squat 4x4: 90kg\n\nPull-ups: 3x5 (10 kg)\n\nBike to & from work",
   R19C7:
     "Murph preperation (vest 9 kg): \n\n1.54 km run (6:14, fc promedio- 147lpm)\n15 rounds cindy (24:51):\n5 pull kipping\n10 push ups\n15 squats \n1.51 km run (6:07, fc promedio - 169lpm)",
+  R21C5:
+    "Murph preperation (vest 9 kg): \n\n1.51 km run (5:46, fc promedio- 153lpm)\nHalf murph (21:13):\n50 pull kipping\n100 push ups\n150 squats \n1.50 km run (6:23, fc promedio - 170lpm)",
+  R22C4:
+    "Bike to & from work\n\nMurph preperation (vest 9 kg): \n\n1.54 km run (5:51, fc promedio- 157lpm) \nHalf murph (19:48): \n50 pull kipping (4:52, started doing sets of 4 at 30, sets of 3 at 38) \n100 push ups (9:38, started doing sets of 4 at 55, sets of 3 at 70 and finished with few singles) 150 squats \n1.51 km run (5:54, fc promedio - 165lpm)\n\nTotal time: 38:11",
   R22C6:
     "Swimming training\n\nRolling and stretching shoulder and lads 20 minutes total (noticeably helps recovery after half Murph if done consistently) ",
   R24C4:
@@ -34,6 +39,7 @@ export const CELLS: Readonly<Record<string, string>> = {
   R25C4: "Bench press 4x4 (70kg)\nDeadlift with Hex bar: 4X4 (107 kg)\nBike to & from work",
   R26C3:
     "Bike to & from work\n\nBench press 4x4 (72.5kg)\nBack squat 4x4 (90kg)\n\nRow machine: 1000m, 4:31, 2:14.9/500m",
+  R28C7: "19+K steps walking (14km)",
   R29C4:
     "5 rounds:\n\n10 kkal rogue bike\n5 strict pull ups\n10 push ups\n5 thrusters 2xDB 18 kg each\n10 air squats",
   R30C2:
