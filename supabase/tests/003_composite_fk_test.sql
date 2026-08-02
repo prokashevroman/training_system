@@ -151,6 +151,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'activities rejects a user_id that disagrees with its workout_session'
 );
 
@@ -165,6 +166,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'strength_sets rejects a user_id that disagrees with its activity'
 );
 
@@ -179,6 +181,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'cardio_intervals rejects a user_id that disagrees with its activity'
 );
 
@@ -192,6 +195,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'circuit_results rejects a user_id that disagrees with its activity'
 );
 
@@ -206,6 +210,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'circuit_movements rejects a user_id that disagrees with its circuit_result'
 );
 
@@ -220,6 +225,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'benchmark_results rejects a user_id that disagrees with its activity'
 );
 
@@ -234,6 +240,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'benchmark_splits rejects a user_id that disagrees with its benchmark_result'
 );
 
@@ -254,6 +261,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'import_entries rejects a user_id that disagrees with its import_batch'
 );
 
@@ -269,6 +277,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'session_tags rejects a user_id that disagrees with its session and tag'
 );
 
@@ -282,6 +291,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'activity_tags rejects a user_id that disagrees with its activity and tag'
 );
 
@@ -295,6 +305,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'import_entry_sessions rejects a user_id that disagrees with its entry and session'
 );
 
@@ -310,6 +321,7 @@ select throws_ok(
          where id = '20000000-0000-4000-8000-000000000001'
     $$,
     '23503',
+    NULL,
     'an existing activity cannot be rewritten to another owner'
 );
 
@@ -320,6 +332,7 @@ select throws_ok(
          where id = '30000000-0000-4000-8000-000000000001'
     $$,
     '23503',
+    NULL,
     'an existing strength_set cannot be rewritten to another owner'
 );
 
@@ -335,6 +348,7 @@ select throws_ok(
          where id = '10000000-0000-4000-8000-000000000001'
     $$,
     '23503',
+    NULL,
     'a workout_session cannot be reassigned while it still has activities'
 );
 

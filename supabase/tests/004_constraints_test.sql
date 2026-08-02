@@ -199,6 +199,7 @@ select throws_ok(
         )
     $$,
     '23514',
+    NULL,
     'strength_sets rejects load_kg when load_scope is machine_setting'
 );
 
@@ -218,6 +219,7 @@ select throws_ok(
         )
     $$,
     '23514',
+    NULL,
     'strength_sets rejects load_kg when load_unit is none'
 );
 
@@ -273,6 +275,7 @@ select throws_ok(
         )
     $$,
     '23514',
+    NULL,
     'circuit_movements applies the same load rule as strength_sets'
 );
 
@@ -292,6 +295,7 @@ select throws_ok(
         )
     $$,
     '23505',
+    NULL,
     'workout_sessions rejects a duplicate (user_id, client_request_key)'
 );
 
@@ -326,6 +330,7 @@ select throws_ok(
         )
     $$,
     '23505',
+    NULL,
     'import_entries rejects a second staging row for the same source cell'
 );
 

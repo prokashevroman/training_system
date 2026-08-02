@@ -229,35 +229,13 @@ select is(
 -- ---------------------------------------------------------------------------
 -- Become athlete B.
 --
--- pgTAP keeps its counters in temp tables created by plan() above; the grants
--- below make them writable by the impersonated role, so the assertions that
--- follow report normally instead of failing on the bookkeeping. Harmless when
--- pgTAP has already granted them.
+-- No bookkeeping fixup is needed here: pgTAP's plan() above already does
+-- `grant all ... to public` on the temp tables and sequences it counts with, so
+-- the assertions below report normally under the impersonated role. The
+-- table-level grants that let `authenticated` reach public tables at all come
+-- from the migrations (0012); everything denied below is denied by RLS, not by
+-- a missing privilege.
 -- ---------------------------------------------------------------------------
-
-do $$
-declare
-    rel record;
-begin
-    for rel in
-        select n.nspname, c.relname, c.relkind
-        from pg_class c
-        join pg_namespace n on n.oid = c.relnamespace
-        where n.oid = pg_my_temp_schema()
-          and c.relkind in ('r', 'S')
-    loop
-        begin
-            if rel.relkind = 'r' then
-                execute format('grant all on table %I.%I to authenticated', rel.nspname, rel.relname);
-            else
-                execute format('grant all on sequence %I.%I to authenticated', rel.nspname, rel.relname);
-            end if;
-        exception when others then
-            null;
-        end;
-    end loop;
-end
-$$;
 
 set local request.jwt.claims = '{"sub":"22222222-2222-2222-2222-222222222222","role":"authenticated"}';
 set local role authenticated;
@@ -425,6 +403,7 @@ select throws_ok(
         values ('11111111-1111-1111-1111-111111111111', '2026-06-16', 'Planted by B')
     $$,
     '42501',
+    NULL,
     'B cannot insert a workout_session owned by A'
 );
 
@@ -439,6 +418,7 @@ select throws_ok(
         )
     $$,
     '42501',
+    NULL,
     'B cannot insert an activity owned by A into the session of A'
 );
 
@@ -453,6 +433,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'B cannot hang an own strength_set off an activity of A'
 );
 
@@ -467,6 +448,7 @@ select throws_ok(
         )
     $$,
     '23503',
+    NULL,
     'B cannot hang an own benchmark_split off a benchmark_result of A'
 );
 
@@ -495,6 +477,7 @@ select throws_ok(
          where id = '10000000-0000-4000-8000-0000000000b1'
     $$,
     '42501',
+    NULL,
     'B cannot reassign its own session to A'
 );
 
