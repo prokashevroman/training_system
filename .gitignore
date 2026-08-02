@@ -43,6 +43,12 @@ docs/reports/import-reconciliation.md
 docs/reports/review-queue.json
 docs/reports/*.local.*
 
+# Playwright artefacts. Traces and screenshots of the signed-in app contain
+# real training data, so they stay local like the workbook itself.
+test-results/
+playwright-report/
+.playwright/
+
 # Supabase local state
 supabase/.temp/
 supabase/.branches/

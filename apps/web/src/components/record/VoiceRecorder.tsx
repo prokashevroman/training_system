@@ -44,9 +44,7 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
       recorder.reset();
     } catch (error) {
       if (error instanceof WorkerError) {
-        setSendError(
-          `${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`,
-        );
+        setSendError(`${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`);
       } else {
         // Almost always a dropped connection. Keep the text so nothing is lost.
         if (fallbackText) {
@@ -89,7 +87,11 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
               </span>
               <span className="text-xs uppercase tracking-wide">Tap to stop</span>
             </button>
-            <button type="button" onClick={recorder.cancel} className="text-sm text-slate-400 underline">
+            <button
+              type="button"
+              onClick={recorder.cancel}
+              className="text-sm text-slate-400 underline"
+            >
               Cancel
             </button>
             <p className="text-xs text-slate-500">
@@ -111,7 +113,10 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
         )}
 
         {recorder.error && (
-          <p role="alert" className="max-w-xs rounded-lg bg-rose-950/60 px-3 py-2 text-center text-sm text-rose-300">
+          <p
+            role="alert"
+            className="max-w-xs rounded-lg bg-rose-950/60 px-3 py-2 text-center text-sm text-rose-300"
+          >
             {recorder.error.message}
           </p>
         )}

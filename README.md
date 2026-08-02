@@ -4,11 +4,10 @@ A voice-first personal training log. Training is stored as **structured data** �
 sessions, activities, sets, intervals, circuits, benchmarks — not one free-text
 cell per day.
 
-This repository currently covers **Phases 0–2** of the brief: repository
-scaffold, Supabase schema with Row Level Security, and the repeatable import of
-the historical Excel workbook. The PWA, the Cloudflare voice Worker and the
-planning engine (Phases 3–7) come later, against a schema already proven
-against real data.
+This repository covers **Phases 0–4** of the brief: repository scaffold,
+Supabase schema with Row Level Security, the repeatable import of the
+historical Excel workbook, the installable PWA, and the Cloudflare voice
+Worker. The planning engine and analytics (Phases 5–7) come later.
 
 ## First successful local run
 
@@ -17,7 +16,7 @@ Docker running (Supabase local development needs it).
 
 ```bash
 pnpm install                       # workspace deps, incl. the Supabase CLI
-pnpm -r test                       # 321 unit tests, no database needed
+pnpm -r test                       # 608 unit tests, no database needed
 ```
 
 Put the workbook in `data/source/` (it is gitignored — see below), then:
@@ -43,8 +42,17 @@ pnpm import:run -- --local         # apply
 pnpm import:run -- --local         # rerun: row counts must not change
 ```
 
-Then query `2026-04-14` and confirm two sessions — a gym workout and a bike
-commute — on the same date.
+Then run the app:
+
+```bash
+cp apps/web/.env.example apps/web/.env.local
+# paste VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY from `supabase status`
+pnpm --filter @training/web dev     # http://localhost:5173
+pnpm test:e2e                       # Playwright, against the imported history
+```
+
+Open `2026-04-14` in History and you should see two sessions — a gym workout
+and a bike commute — on the same date.
 
 ## The source workbook
 
@@ -75,11 +83,16 @@ number without a unit.
 ## Layout
 
 ```text
+apps/web/                   Installable PWA (Vite + React + Tailwind)
+apps/ai-worker/             Cloudflare Worker: transcribe, parse, plan
 packages/domain/            Zod schemas + enums — the single source of truth
+packages/ai-contracts/      Provider interfaces and API schemas (no Cloudflare)
+packages/db-types/          Generated Supabase row types
 scripts/import-workbook/    Python extract (openpyxl) + TypeScript parse/apply
-supabase/migrations/        0001-0011, ordered
+supabase/migrations/        0001-0012, ordered
 supabase/tests/             pgTAP RLS tests
-docs/                       Architecture, data model, import documentation
+e2e/                        Playwright flows against the imported history
+docs/                       Architecture, data model, import, Cloudflare setup
 ```
 
 `supabase/migrations/0001_extensions_and_enums.sql` and `supabase/seed.sql` are
@@ -92,12 +105,24 @@ generators, so the database and the application cannot drift.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — how the pieces fit and why
 - [docs/DATA_MODEL.md](docs/DATA_MODEL.md) — ER diagram and table reference
 - [docs/EXCEL_IMPORT.md](docs/EXCEL_IMPORT.md) — the import pipeline in detail
+- [docs/CLOUDFLARE_WORKERS_AI_SETUP.md](docs/CLOUDFLARE_WORKERS_AI_SETUP.md) — Cloudflare from zero
 
 ## Status
 
-| Phase                                 | State                                                                                        |
-| ------------------------------------- | -------------------------------------------------------------------------------------------- |
-| 0 — repo, contracts, workbook profile | Done                                                                                         |
-| 1 — schema, RLS, seeds                | Written; `supabase db reset` / `supabase test db` not yet run (needs Docker)                 |
-| 2 — workbook import                   | Parse, validate, reconcile verified; `apply` written but not yet run against a live database |
-| 3–7                                   | Not started                                                                                  |
+| Phase                                   | State                                                                |
+| --------------------------------------- | -------------------------------------------------------------------- |
+| 0 — repo, contracts, workbook profile   | Done                                                                 |
+| 1 — schema, RLS, seeds                  | Done; 12 migrations apply cleanly, 82 pgTAP assertions pass          |
+| 2 — workbook import                     | Done; applied to a live database, rerun-identical row counts         |
+| 3 — PWA without AI                      | Done; auth, Today, Record, History, session detail, import review    |
+| 4 — Worker and voice                    | Code and guide done; **never run against a real Cloudflare account** |
+| 5–7 — planning, LLM planning, analytics | Not started                                                          |
+
+### What is not verified
+
+The Worker's unit tests pass against a mock provider, but no live Cloudflare
+inference has ever run: there is no account yet. The model IDs in
+`wrangler.jsonc` come from the brief and must be checked against Cloudflare's
+current catalogue before the first deploy. Saving a voice draft is deliberately
+disabled in the UI until that happens — validating a draft's shape is not the
+same as trusting its contents.

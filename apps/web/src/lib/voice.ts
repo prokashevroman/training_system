@@ -52,12 +52,7 @@ export function detectRecorderSupport(): RecorderError | null {
 
 /** Picks a container the browser actually supports, preferring compact Opus. */
 function pickMimeType(): string {
-  const candidates = [
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-    "audio/ogg;codecs=opus",
-  ];
+  const candidates = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus"];
   for (const type of candidates) {
     if (MediaRecorder.isTypeSupported(type)) return type;
   }

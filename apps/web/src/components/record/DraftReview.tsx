@@ -78,8 +78,7 @@ export function DraftReview({ draft, onDiscard }: { draft: unknown; onDiscard: (
                   {activity.distanceKm !== null && ` · ${activity.distanceKm} km`}
                   {activity.durationSeconds !== null &&
                     ` · ${Math.round(activity.durationSeconds / 60)} min`}
-                  {activity.strengthSets.length > 0 &&
-                    ` · ${activity.strengthSets.length} sets`}
+                  {activity.strengthSets.length > 0 && ` · ${activity.strengthSets.length} sets`}
                 </li>
               ))}
             </ul>
@@ -146,8 +145,8 @@ export function DraftReview({ draft, onDiscard }: { draft: unknown; onDiscard: (
       </div>
       <p className="text-xs text-slate-500">
         Saving is disabled until the Worker has been exercised against a real Cloudflare account —
-        the draft shape is validated here, but writing unverified AI output to real training
-        history is exactly what the architecture is meant to prevent.
+        the draft shape is validated here, but writing unverified AI output to real training history
+        is exactly what the architecture is meant to prevent.
       </p>
     </div>
   );

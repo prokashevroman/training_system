@@ -78,10 +78,7 @@ export interface DraftRequestContext {
   idempotencyKey: string;
 }
 
-export async function draftFromText(
-  text: string,
-  context: DraftRequestContext,
-): Promise<unknown> {
+export async function draftFromText(text: string, context: DraftRequestContext): Promise<unknown> {
   const response = await fetch(`${requireUrl()}/v1/workout-drafts/from-text`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: await authHeader() },

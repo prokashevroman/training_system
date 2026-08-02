@@ -1,17 +1,19 @@
 # Architecture
 
-The state of the system after Phases 0–2. Phases 3–7 (PWA, Cloudflare voice
-Worker, planning engine, analytics) are not built yet; this document describes
-what exists and the seams left for them.
+The state of the system after Phases 0–4. The planning engine and analytics
+(Phases 5–7) are not built yet; this document describes what exists and the
+seams left for them.
 
 ## The governing rule
 
 > The database stores facts. Deterministic code enforces rules. The LLM
 > interprets, proposes, and explains — and never writes unvalidated data.
 
-Nothing in Phases 0–2 calls a model. The workbook import is entirely
-deterministic: text it cannot parse is flagged for review, never guessed. The
-`--ai` flag exists in the CLI and deliberately errors out until Phase 4.
+The workbook import is entirely deterministic and calls no model: text it
+cannot parse is flagged for review, never guessed. The Worker added in Phase 4
+returns drafts only — it holds no service-role key and cannot write to the
+database, so an approved draft always travels through RLS-protected APIs from
+the browser.
 
 ## Layout
 
@@ -26,9 +28,10 @@ data/staging/               cells.jsonl. Gitignored.
 docs/reports/               Workbook profile (committed); reconciliation (local only)
 ```
 
-Three deliberate absences: there is no `apps/web` yet, no `apps/ai-worker`, and
-no planner package. Building them before the data model was proven against real
-data would have meant guessing.
+One deliberate absence remains: there is no planner package. The Phase 5
+config and planning tables are not created either — nothing references them,
+and guessing their columns before the planner exists is the more expensive
+error.
 
 ## Three ideas carry the design
 

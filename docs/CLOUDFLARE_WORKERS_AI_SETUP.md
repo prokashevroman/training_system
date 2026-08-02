@@ -11,13 +11,13 @@ steps in this guide have been executed**. They are written from Cloudflare's
 documented behaviour and from the code in `apps/ai-worker`, which is real and
 tested. Concretely:
 
-| Part                                                                                | Status                                                                 |
-| ----------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `apps/ai-worker` code, routes, env contract, error codes, mock provider, test suite | Verified — the suite runs offline and passes                            |
-| `wrangler.jsonc` / `.dev.vars.example` variable names                               | Verified — quoted from the committed files                             |
-| Account creation, `wrangler login`, `wrangler dev`, `wrangler deploy`, dashboard UI | **Unverified** — never run here; Cloudflare's UI and wording move      |
+| Part                                                                                | Status                                                                            |
+| ----------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `apps/ai-worker` code, routes, env contract, error codes, mock provider, test suite | Verified — the suite runs offline and passes                                      |
+| `wrangler.jsonc` / `.dev.vars.example` variable names                               | Verified — quoted from the committed files                                        |
+| Account creation, `wrangler login`, `wrangler dev`, `wrangler deploy`, dashboard UI | **Unverified** — never run here; Cloudflare's UI and wording move                 |
 | The three model IDs                                                                 | **Unverified preferences** from the brief, not checked against the live catalogue |
-| Free-allocation and pricing numbers                                                 | **Not quoted** on purpose — read them off Cloudflare's pricing page    |
+| Free-allocation and pricing numbers                                                 | **Not quoted** on purpose — read them off Cloudflare's pricing page               |
 
 Before the first deploy, open
 <https://developers.cloudflare.com/workers-ai/models/> and confirm that all
@@ -58,7 +58,7 @@ configuration.
 In this system the Worker has exactly one job: **turn speech or free text into a
 structured draft, and propose plan drafts.** It is the interpretation layer.
 
-What the Worker deliberately does *not* do:
+What the Worker deliberately does _not_ do:
 
 - It has **no database access and no Supabase service-role key.** Look at
   `WorkerEnv` in `apps/ai-worker/src/env.ts` — there is no connection string and
@@ -139,12 +139,12 @@ available to look at.
 
 ## 4. Local prerequisites and supported Node version
 
-| Tool     | Required version                     | Where the requirement is stated               |
-| -------- | ------------------------------------ | --------------------------------------------- |
-| Node.js  | `>= 20`                              | `engines.node` in the root `package.json`     |
-| pnpm     | `11.5.2`                             | `packageManager` in the root `package.json`   |
-| Wrangler | `^4.0.0` (installed as a dev dep)    | `devDependencies` in `apps/ai-worker/package.json` |
-| Supabase CLI | `^2.22.6` (installed as a dev dep) | root `devDependencies`; needed for a local token |
+| Tool         | Required version                   | Where the requirement is stated                    |
+| ------------ | ---------------------------------- | -------------------------------------------------- |
+| Node.js      | `>= 20`                            | `engines.node` in the root `package.json`          |
+| pnpm         | `11.5.2`                           | `packageManager` in the root `package.json`        |
+| Wrangler     | `^4.0.0` (installed as a dev dep)  | `devDependencies` in `apps/ai-worker/package.json` |
+| Supabase CLI | `^2.22.6` (installed as a dev dep) | root `devDependencies`; needed for a local token   |
 
 Node 20 or newer is the floor. Node 22 is what the repo's `@types/node` targets
 and is a safe choice.
@@ -268,8 +268,8 @@ not represented here.
     "MAX_AUDIO_BYTES": "10485760",
     "MAX_AUDIO_SECONDS": "300",
     "MAX_TEXT_CHARS": "12000",
-    "RATE_LIMIT_PER_MINUTE": "30"
-  }
+    "RATE_LIMIT_PER_MINUTE": "30",
+  },
 }
 ```
 
@@ -278,7 +278,7 @@ Field by field:
 - **`$schema`** — points at the schema shipped inside the installed `wrangler`
   package, so an editor autocompletes and validates this file.
 - **`name`** — the Worker's name in your account, and the first label of its
-  `workers.dev` hostname. Changing it creates a *different* Worker; it does not
+  `workers.dev` hostname. Changing it creates a _different_ Worker; it does not
   rename the existing one.
 - **`main`** — the entry module. `src/index.ts` exports `{ fetch }` and nothing
   else; Wrangler bundles the TypeScript itself, so there is no build step.
@@ -290,7 +290,7 @@ Field by field:
   log retention for this Worker (section 21). Without it, `wrangler tail` still
   streams live but the dashboard shows much less.
 - **`ai.binding`** — see section 8.
-- **`vars`** — non-secret configuration, deployed *with* the Worker and visible
+- **`vars`** — non-secret configuration, deployed _with_ the Worker and visible
   in the dashboard. Anything sensitive must be a secret instead (section 11).
   Note that all numeric limits are strings: `vars` values arrive as strings and
   `resolveConfig` in `src/env.ts` parses them.
@@ -308,8 +308,8 @@ This single line
 ```
 
 tells Cloudflare: when this Worker runs, inject an AI client into the `env`
-object under the property name `AI`. `"binding"` is the *variable name you
-choose*; `AI` is conventional and is what the brief specifies. Rename it and
+object under the property name `AI`. `"binding"` is the _variable name you
+choose_; `AI` is conventional and is what the brief specifies. Rename it and
 you must rename it in the code too.
 
 There is no API key, no endpoint URL and no SDK import. Authentication is
@@ -356,23 +356,23 @@ the provider abstraction required by brief section 9.
 
 Only one variable is ever a secret, and even that one is optional.
 
-| Variable                | Secret? | Where the value comes from                                                                                              |
-| ----------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------- |
-| `AI_PROVIDER`           | No      | `cloudflare` or `mock`. Anything other than the exact string `cloudflare` resolves to `mock` (`resolveConfig`, `src/env.ts`). |
-| `STT_MODEL`             | No      | A Workers AI model ID from <https://developers.cloudflare.com/workers-ai/models/>.                                      |
-| `WORKOUT_PARSER_MODEL`  | No      | Same catalogue; must support JSON Mode / schema-constrained output.                                                     |
-| `PLANNER_MODEL`         | No      | Same catalogue. May be the same ID as the parser, and currently is.                                                     |
-| `ALLOWED_ORIGINS`       | No      | Comma-separated exact origins. Local: the Vite dev server, `http://localhost:5173`. Production: the deployed PWA origin. |
-| `SUPABASE_URL`          | No      | Local: `http://127.0.0.1:54321`, the `API URL` printed by `supabase status`. Hosted: **Project Settings → API → Project URL** in the Supabase dashboard. |
-| `SUPABASE_JWKS_URL`     | No      | Optional override. Defaults to `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.                                         |
-| `SUPABASE_JWT_ISSUER`   | No      | Optional override. Defaults to `${SUPABASE_URL}/auth/v1`, and must equal the `iss` claim in your tokens.                |
+| Variable                | Secret? | Where the value comes from                                                                                                                                                                                       |
+| ----------------------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `AI_PROVIDER`           | No      | `cloudflare` or `mock`. Anything other than the exact string `cloudflare` resolves to `mock` (`resolveConfig`, `src/env.ts`).                                                                                    |
+| `STT_MODEL`             | No      | A Workers AI model ID from <https://developers.cloudflare.com/workers-ai/models/>.                                                                                                                               |
+| `WORKOUT_PARSER_MODEL`  | No      | Same catalogue; must support JSON Mode / schema-constrained output.                                                                                                                                              |
+| `PLANNER_MODEL`         | No      | Same catalogue. May be the same ID as the parser, and currently is.                                                                                                                                              |
+| `ALLOWED_ORIGINS`       | No      | Comma-separated exact origins. Local: the Vite dev server, `http://localhost:5173`. Production: the deployed PWA origin.                                                                                         |
+| `SUPABASE_URL`          | No      | Local: `http://127.0.0.1:54321`, the `API URL` printed by `supabase status`. Hosted: **Project Settings → API → Project URL** in the Supabase dashboard.                                                         |
+| `SUPABASE_JWKS_URL`     | No      | Optional override. Defaults to `${SUPABASE_URL}/auth/v1/.well-known/jwks.json`.                                                                                                                                  |
+| `SUPABASE_JWT_ISSUER`   | No      | Optional override. Defaults to `${SUPABASE_URL}/auth/v1`, and must equal the `iss` claim in your tokens.                                                                                                         |
 | `SUPABASE_JWT_SECRET`   | **Yes** | Only for projects still signing with symmetric HS256, which includes local Supabase. Local value: the `JWT secret` printed by `supabase status`. Hosted: **Project Settings → API → JWT Settings → JWT Secret**. |
-| `MAX_JSON_BODY_BYTES`   | No      | Bytes. `131072` (128 KiB), matching `AI_LIMITS.maxJsonBodyBytes` in `packages/ai-contracts`.                            |
-| `MAX_AUDIO_BYTES`       | No      | Bytes. `10485760` (10 MiB).                                                                                             |
-| `MAX_AUDIO_SECONDS`     | No      | Seconds. `300`, the brief's five-minute recording cap.                                                                  |
-| `MAX_TEXT_CHARS`        | No      | Characters of transcript or typed text. `12000`.                                                                        |
-| `RATE_LIMIT_PER_MINUTE` | No      | Requests per authenticated user per minute. `30`. Counted per Worker isolate (see section 20.6).                          |
-| `LOG_LEVEL`             | No      | `info` (default) or `debug`. `debug` adds request metadata only — never tokens, audio or transcript text.               |
+| `MAX_JSON_BODY_BYTES`   | No      | Bytes. `131072` (128 KiB), matching `AI_LIMITS.maxJsonBodyBytes` in `packages/ai-contracts`.                                                                                                                     |
+| `MAX_AUDIO_BYTES`       | No      | Bytes. `10485760` (10 MiB).                                                                                                                                                                                      |
+| `MAX_AUDIO_SECONDS`     | No      | Seconds. `300`, the brief's five-minute recording cap.                                                                                                                                                           |
+| `MAX_TEXT_CHARS`        | No      | Characters of transcript or typed text. `12000`.                                                                                                                                                                 |
+| `RATE_LIMIT_PER_MINUTE` | No      | Requests per authenticated user per minute. `30`. Counted per Worker isolate (see section 20.6).                                                                                                                 |
+| `LOG_LEVEL`             | No      | `info` (default) or `debug`. `debug` adds request metadata only — never tokens, audio or transcript text.                                                                                                        |
 
 Every one of these except `AI_PROVIDER`'s default is optional in code: unset
 limits fall back to the shared defaults in `packages/ai-contracts/src/limits.ts`.
@@ -386,10 +386,10 @@ it; CI is the only exception, section 25).
 
 ### Where each kind of value is stored
 
-| Kind                        | Local (`wrangler dev`)        | Deployed                                        |
-| --------------------------- | ----------------------------- | ----------------------------------------------- |
-| Non-secret configuration    | `.dev.vars` (overrides `vars`) | `vars` in `wrangler.jsonc`, committed           |
-| Secret                      | `.dev.vars`, gitignored        | `npx wrangler secret put NAME`, never committed |
+| Kind                     | Local (`wrangler dev`)         | Deployed                                        |
+| ------------------------ | ------------------------------ | ----------------------------------------------- |
+| Non-secret configuration | `.dev.vars` (overrides `vars`) | `vars` in `wrangler.jsonc`, committed           |
+| Secret                   | `.dev.vars`, gitignored        | `npx wrangler secret put NAME`, never committed |
 
 ## 10. `.dev.vars.example` is committed, `.dev.vars` never is
 
@@ -572,7 +572,7 @@ npx wrangler dev --var AI_PROVIDER:mock
 
 Mock responses are fixed shapes that satisfy the same Zod schemas in
 `packages/ai-contracts` as real ones, so the browser cannot tell the difference
-structurally. What they do not tell you is whether a *model ID* is valid — only
+structurally. What they do not tell you is whether a _model ID_ is valid — only
 section 15 does that.
 
 ## 15. Running an explicit live AI smoke test
@@ -740,7 +740,7 @@ Rules:
 - **Blank disables voice.** That is the intended state before the Worker exists,
   and the manual text-entry fallback keeps working.
 - `VITE_`-prefixed variables are **inlined into the browser bundle** by Vite, so
-  only public values belong here. That is why the Supabase *anon* key is fine
+  only public values belong here. That is why the Supabase _anon_ key is fine
   and why no service-role key or Cloudflare token ever gets a `VITE_` prefix.
 - Vite reads `.env` at dev-server start and at build time. Restart the dev
   server after changing it.
@@ -1084,13 +1084,13 @@ the code.
 **App-level limits, enforced before any model call** (`vars` in
 `wrangler.jsonc`, defaults in `packages/ai-contracts/src/limits.ts`):
 
-| Limit                   | Default        | Stops                                              |
-| ----------------------- | -------------- | -------------------------------------------------- |
-| `MAX_AUDIO_SECONDS`     | 300 (5 min)    | Long recordings; STT cost scales with duration      |
-| `MAX_AUDIO_BYTES`       | 10 MiB         | Oversized uploads regardless of stated duration     |
-| `MAX_TEXT_CHARS`        | 12 000         | A huge transcript reaching the parser               |
-| `MAX_JSON_BODY_BYTES`   | 128 KiB        | Oversized JSON bodies                               |
-| `RATE_LIMIT_PER_MINUTE` | 30 per user    | Loops, double-taps, a stuck retry (per isolate)     |
+| Limit                   | Default     | Stops                                           |
+| ----------------------- | ----------- | ----------------------------------------------- |
+| `MAX_AUDIO_SECONDS`     | 300 (5 min) | Long recordings; STT cost scales with duration  |
+| `MAX_AUDIO_BYTES`       | 10 MiB      | Oversized uploads regardless of stated duration |
+| `MAX_TEXT_CHARS`        | 12 000      | A huge transcript reaching the parser           |
+| `MAX_JSON_BODY_BYTES`   | 128 KiB     | Oversized JSON bodies                           |
+| `RATE_LIMIT_PER_MINUTE` | 30 per user | Loops, double-taps, a stuck retry (per isolate) |
 
 Lower them for a personal deployment. There is no downside to
 `MAX_AUDIO_SECONDS=120` if you never speak for two minutes.
@@ -1111,7 +1111,7 @@ would be thousands of tokens on every single request. They are versioned
 (`workout-parser/1`, `planner/1`, `stt/1`) and the version is stored on every
 draft, so a regression traces back to the prompt that caused it.
 
-**A bounded retry.** `src/schema-retry.ts` allows *at most one* repair attempt,
+**A bounded retry.** `src/schema-retry.ts` allows _at most one_ repair attempt,
 and the retry feeds the Zod validation issues back as a hint rather than blindly
 re-rolling. There is no open-ended loop anywhere. The hard ceiling is two model
 calls for a text request and three for an audio one (one STT plus up to two
@@ -1237,7 +1237,7 @@ This one is unusual because it surfaces on `GET /health` too, since `/health`
 constructs the providers in order to report them.
 
 - Confirm `"ai": { "binding": "AI" }` is present in `wrangler.jsonc` and that
-  you deployed *after* adding it.
+  you deployed _after_ adding it.
 - Confirm the name matches the code: the config says `AI`, and `env.ts` reads
   `env.AI`.
 - Confirm Workers AI is enabled on the account (section 3).
@@ -1271,10 +1271,10 @@ environment to `wrangler.jsonc`:
         "MAX_AUDIO_BYTES": "10485760",
         "MAX_AUDIO_SECONDS": "300",
         "MAX_TEXT_CHARS": "12000",
-        "RATE_LIMIT_PER_MINUTE": "30"
-      }
-    }
-  }
+        "RATE_LIMIT_PER_MINUTE": "30",
+      },
+    },
+  },
 }
 ```
 
@@ -1418,20 +1418,20 @@ account**. Keeping an empty account costs nothing.
 
 ## Reference: where each value comes from
 
-| Value                          | Source                                                                    |
-| ------------------------------ | ------------------------------------------------------------------------- |
-| Cloudflare account ID          | `npx wrangler whoami`, or the dashboard URL                               |
-| `workers.dev` subdomain        | `npx wrangler deploy` output, or Workers & Pages → Subdomain              |
-| Worker URL                     | `https://training-ai-worker.<subdomain>.workers.dev`                      |
-| Workers AI model IDs           | <https://developers.cloudflare.com/workers-ai/models/>                    |
-| `SUPABASE_URL` (local)         | the `API URL` printed by `supabase status`                                |
-| `SUPABASE_URL` (hosted)        | Supabase dashboard → Project Settings → API → Project URL                 |
-| `SUPABASE_JWT_SECRET` (local)  | the `JWT secret` printed by `supabase status`                             |
-| `SUPABASE_JWT_SECRET` (hosted) | Supabase dashboard → Project Settings → API → JWT Settings                |
-| `VITE_SUPABASE_ANON_KEY`       | the `anon key` printed by `supabase status`, or Project Settings → API     |
-| Bearer token for `curl`        | `POST /auth/v1/token?grant_type=password` (section 20.0)                  |
-| `ALLOWED_ORIGINS` (local)      | the origin the Vite dev server prints, normally `http://localhost:5173`   |
-| `ALLOWED_ORIGINS` (production) | the origin the PWA is deployed to                                         |
-| Limits and their defaults      | `packages/ai-contracts/src/limits.ts`                                     |
-| Error codes and statuses       | `packages/ai-contracts/src/errors.ts`                                     |
-| CI API token                   | Cloudflare dashboard → My Profile → API Tokens                            |
+| Value                          | Source                                                                  |
+| ------------------------------ | ----------------------------------------------------------------------- |
+| Cloudflare account ID          | `npx wrangler whoami`, or the dashboard URL                             |
+| `workers.dev` subdomain        | `npx wrangler deploy` output, or Workers & Pages → Subdomain            |
+| Worker URL                     | `https://training-ai-worker.<subdomain>.workers.dev`                    |
+| Workers AI model IDs           | <https://developers.cloudflare.com/workers-ai/models/>                  |
+| `SUPABASE_URL` (local)         | the `API URL` printed by `supabase status`                              |
+| `SUPABASE_URL` (hosted)        | Supabase dashboard → Project Settings → API → Project URL               |
+| `SUPABASE_JWT_SECRET` (local)  | the `JWT secret` printed by `supabase status`                           |
+| `SUPABASE_JWT_SECRET` (hosted) | Supabase dashboard → Project Settings → API → JWT Settings              |
+| `VITE_SUPABASE_ANON_KEY`       | the `anon key` printed by `supabase status`, or Project Settings → API  |
+| Bearer token for `curl`        | `POST /auth/v1/token?grant_type=password` (section 20.0)                |
+| `ALLOWED_ORIGINS` (local)      | the origin the Vite dev server prints, normally `http://localhost:5173` |
+| `ALLOWED_ORIGINS` (production) | the origin the PWA is deployed to                                       |
+| Limits and their defaults      | `packages/ai-contracts/src/limits.ts`                                   |
+| Error codes and statuses       | `packages/ai-contracts/src/errors.ts`                                   |
+| CI API token                   | Cloudflare dashboard → My Profile → API Tokens                          |
