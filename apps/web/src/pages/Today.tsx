@@ -57,7 +57,9 @@ export function Today() {
           </div>
         )}
 
-        {sessions.data?.map((session) => <SessionCard key={session.id} session={session} />)}
+        {sessions.data?.map((session) => (
+          <SessionCard key={session.id} session={session} />
+        ))}
       </section>
     </div>
   );

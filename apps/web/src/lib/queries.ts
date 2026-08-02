@@ -113,7 +113,9 @@ export function useExerciseLibrary() {
 }
 
 /** Formats a set the way the source workbook meant it, not as bare kilograms. */
-export function formatLoad(set: Pick<StrengthSet, "load_value" | "load_unit" | "load_scope" | "load_kg">): string {
+export function formatLoad(
+  set: Pick<StrengthSet, "load_value" | "load_unit" | "load_scope" | "load_kg">,
+): string {
   if (set.load_value === null) return "—";
   const unit = set.load_unit === "none" ? "" : ` ${set.load_unit}`;
   const base = `${set.load_value}${unit}`;

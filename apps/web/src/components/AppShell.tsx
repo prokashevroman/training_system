@@ -17,11 +17,36 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { to: "/", label: "Today", icon: "M3 11l9-8 9 8v9a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z", enabled: true },
-  { to: "/record", label: "Record", icon: "M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-2.1A7 7 0 0019 12z", enabled: true },
-  { to: "/plan", label: "Plan", icon: "M7 2v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2h-2V2h-2v2H9V2zm12 8v10H5V10z", enabled: false },
-  { to: "/history", label: "History", icon: "M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 111.9 4.8l-1.5 1.3A9 9 0 1013 3zm-1 5v5l4 2 .8-1.3-3.3-1.9V8z", enabled: true },
-  { to: "/more", label: "More", icon: "M6 10a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4z", enabled: true },
+  {
+    to: "/",
+    label: "Today",
+    icon: "M3 11l9-8 9 8v9a2 2 0 01-2 2h-4v-6H9v6H5a2 2 0 01-2-2z",
+    enabled: true,
+  },
+  {
+    to: "/record",
+    label: "Record",
+    icon: "M12 15a3 3 0 003-3V6a3 3 0 10-6 0v6a3 3 0 003 3zm5-3a5 5 0 01-10 0H5a7 7 0 006 6.9V21h2v-2.1A7 7 0 0019 12z",
+    enabled: true,
+  },
+  {
+    to: "/plan",
+    label: "Plan",
+    icon: "M7 2v2H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2h-2V2h-2v2H9V2zm12 8v10H5V10z",
+    enabled: false,
+  },
+  {
+    to: "/history",
+    label: "History",
+    icon: "M13 3a9 9 0 00-9 9H1l4 4 4-4H6a7 7 0 111.9 4.8l-1.5 1.3A9 9 0 1013 3zm-1 5v5l4 2 .8-1.3-3.3-1.9V8z",
+    enabled: true,
+  },
+  {
+    to: "/more",
+    label: "More",
+    icon: "M6 10a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4zm6 0a2 2 0 100 4 2 2 0 000-4z",
+    enabled: true,
+  },
 ];
 
 function Icon({ path }: { path: string }) {

@@ -43,10 +43,7 @@ export function SessionCard({
 
       <div className="mt-2 flex flex-wrap gap-1.5">
         {activities.map((a) => (
-          <span
-            key={a.id}
-            className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300"
-          >
+          <span key={a.id} className="rounded-full bg-slate-800 px-2 py-0.5 text-xs text-slate-300">
             {MODALITY_LABEL[a.modality] ?? a.modality}
           </span>
         ))}

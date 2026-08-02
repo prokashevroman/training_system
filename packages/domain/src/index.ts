@@ -11,4 +11,9 @@ export * from "./benchmark-library.js";
 export * from "./activity.js";
 export * from "./session.js";
 export * from "./workbook.js";
-export * from "./seed-sql.js";
+
+// `sql-enums.ts` and `seed-sql.ts` are deliberately NOT re-exported here. They
+// are build-time generators that import `node:url`, and this barrel is imported
+// by the browser app — re-exporting them drags Node into the bundle and breaks
+// the Vite build with "fileURLToPath is not exported by __vite-browser-external".
+// The generator scripts and their drift tests import those modules by path.

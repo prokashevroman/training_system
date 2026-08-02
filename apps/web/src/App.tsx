@@ -14,9 +14,7 @@ export default function App() {
 
   if (loading) {
     return (
-      <div className="grid min-h-dvh place-items-center bg-slate-950 text-slate-500">
-        Loading…
-      </div>
+      <div className="grid min-h-dvh place-items-center bg-slate-950 text-slate-500">Loading…</div>
     );
   }
 

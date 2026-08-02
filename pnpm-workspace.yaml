@@ -2,6 +2,8 @@ packages:
   - "apps/*"
   - "packages/*"
   - "scripts/*"
-# vitest bundles esbuild, whose postinstall script fetches its native binary.
+# Both fetch a native binary in their postinstall: esbuild for vitest/vite,
+# workerd for the Cloudflare Worker runtime that `wrangler dev` runs on.
 allowBuilds:
   esbuild: true
+  workerd: true

@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    // The Worker runtime, not Node: `types` is overridden rather than extended so
+    // Node globals cannot leak into code that must run on workerd.
+    "types": ["@cloudflare/workers-types", "vitest/globals"]
+  },
+  "include": ["src"]
+}
