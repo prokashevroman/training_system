@@ -1,0 +1,6 @@
+packages:
+  - "packages/*"
+  - "scripts/*"
+# vitest bundles esbuild, whose postinstall script fetches its native binary.
+allowBuilds:
+  esbuild: true

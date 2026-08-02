@@ -1,0 +1,8 @@
+node_modules
+dist
+.venv
+data/staging
+data/source
+docs/reports
+pnpm-lock.yaml
+supabase/.temp

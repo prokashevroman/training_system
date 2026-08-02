@@ -1,0 +1,35 @@
+{
+  "name": "training-system",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "gen:sql-enums": "pnpm --filter @training/domain gen:sql-enums",
+    "import:inspect": "pnpm --filter @training/import-workbook inspect",
+    "import:extract": "pnpm --filter @training/import-workbook extract",
+    "import:run": "pnpm --filter @training/import-workbook run:import",
+    "import:reconcile": "pnpm --filter @training/import-workbook reconcile",
+    "db:start": "supabase start",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.1",
+    "supabase": "^2.22.6",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^2.1.8"
+  }
+}
