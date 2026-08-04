@@ -1,5 +1,10 @@
 # Cloudflare Workers AI setup
 
+> **Looking for the steps to follow, in order?** Read
+> [`CLOUDFLARE_CHECKLIST.md`](./CLOUDFLARE_CHECKLIST.md) instead — it is short and
+> says for each step whether it happens in your terminal, your browser or your editor.
+> This document is the reference: use it to look up why something works the way it does.
+
 For a developer who is comfortable with Supabase and has never used Cloudflare.
 Every command is meant to be copy/pasted. Every value is traced back to the
 system that produces it.

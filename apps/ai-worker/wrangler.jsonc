@@ -35,11 +35,17 @@
     "PLANNER_MODEL": "@cf/qwen/qwen3-30b-a3b-fp8",
 
     // Comma-separated CORS allowlist. Replace with the deployed PWA origin.
-    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173",
+    "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://training-system-web-rose.vercel.app/",
 
     // Supabase project URL, used to derive the JWKS endpoint and the expected
     // token issuer. Not a secret.
-    "SUPABASE_URL": "http://127.0.0.1:54321",
+    //
+    // Exactly ONE url. Unlike ALLOWED_ORIGINS this is never comma-split
+    // (`resolveConfig` in src/env.ts), so a second value here is swallowed into
+    // the string and yields a malformed issuer — every request then fails
+    // authentication with "Bearer token is invalid or expired". For local dev
+    // put the localhost url in .dev.vars instead; it overrides this one.
+    "SUPABASE_URL": "https://nyrtrhwreaknqrypnmfx.supabase.co",
 
     // Limits (brief 7.2 step 3). Empty/absent falls back to the shared defaults
     // in @training/ai-contracts.

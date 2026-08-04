@@ -53,5 +53,8 @@ playwright-report/
 supabase/.temp/
 supabase/.branches/
 
+# Wrangler local state. `wrangler dev` writes bundles and workerd state here.
+apps/ai-worker/.wrangler/
+
 # OS
 .DS_Store
