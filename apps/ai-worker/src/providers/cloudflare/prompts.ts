@@ -8,14 +8,18 @@ import { ModalityEnum, ObjectiveEnum, IntensityEnum, WarningCodeEnum } from "@tr
  * output: the version is stored on every draft, so a regression can be traced to
  * the prompt that produced it.
  */
-export const WORKOUT_PARSER_PROMPT_VERSION = "workout-parser/1";
+export const WORKOUT_PARSER_PROMPT_VERSION = "workout-parser/2";
 export const PLANNER_PROMPT_VERSION = "planner/1";
 export const PLANNER_EXPLAIN_PROMPT_VERSION = "planner-explain/1";
 
 /** Brief 7.5: the parser's non-negotiable rules. */
 const PARSER_RULES = [
   "Never invent missing data.",
-  "Use null for any value the source does not state.",
+  // "|null" fields only — a literal model told to "use null for anything
+  // unstated" will null enum fields too, and every one of those costs a
+  // schema-repair round trip (this is not hypothetical; llama-3.3 did exactly
+  // that with the previous wording).
+  'Use null for any value the source does not state and the contract marks "|null". Fields without "|null" are required: when the source does not state them, use "unknown" for objective and intensity, "working" for setType, and a short descriptive title.',
   "Preserve ambiguities: emit a warning instead of choosing an interpretation.",
   "Split independent sessions into separate entries.",
   "Keep a composite workout (for example a benchmark with several movements) as one session.",
@@ -50,6 +54,7 @@ function outputContract(): string {
     `Allowed intensity values: ${IntensityEnum.values.join(", ")}.`,
     "Allowed loadUnit values: kg, lb, none. Allowed loadScope values: total, per_hand, per_side, added_bodyweight, bodyweight, machine_setting, unknown.",
     `Allowed warning codes: ${WarningCodeEnum.options.join(", ")}.`,
+    '"title", "modality", "objective", "intensity" and "setType" are never null. An unstated objective or intensity is "unknown"; an unqualified set is "working"; a title is a short name derived from the content (for example "Pushups").',
     "Do not set clientRequestKey, source or transcript: the server owns those fields.",
   ].join("\n");
 }

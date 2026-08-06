@@ -24,15 +24,21 @@
     // per environment) when Cloudflare's catalogue moves. `GET /health` echoes
     // whatever is configured, so a mismatch is visible immediately.
     //
-    // The two chat models must be non-reasoning and must appear on Cloudflare's
-    // JSON Mode list: https://developers.cloudflare.com/workers-ai/features/json-mode/
-    // The original choice (`@cf/qwen/qwen3-30b-a3b-fp8`) satisfied neither. It is
-    // tagged Reasoning, so it spent thousands of tokens deliberating over "3x10
-    // pushups", and being absent from the JSON Mode list meant `response_format`
-    // was ignored — its `<think>` preamble then failed `JSON.parse`, costing a
-    // second full model call through `withSchemaRetry` before any answer landed.
+    // Chat models must be NON-REASONING. The original `@cf/qwen/qwen3-30b-a3b-fp8`
+    // is tagged Reasoning: it spent thousands of tokens deliberating over "3x10
+    // pushups" and its `<think>` preamble failed `JSON.parse`, costing a second
+    // full model call through `withSchemaRetry` before any answer landed.
+    //
+    // The two roles are picked on different criteria, measured live 2026-08-06:
+    //  - Parser: user waits on it after every recording. Scout answered the test
+    //    inputs in 3-15s where the 70b took a steady 25-35s, at equal draft
+    //    quality; 8b-fast was quick but invented warning codes. The safety nets
+    //    in draft.ts/workers-ai.ts (null healing, think-strip, prose extraction)
+    //    do the schema-compliance work, so JSON Mode support is a nice-to-have
+    //    here rather than a requirement.
+    //  - Planner: called rarely and deliberately, so quality beats latency.
     "STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "WORKOUT_PARSER_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "WORKOUT_PARSER_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct",
     "PLANNER_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 
     // Comma-separated CORS allowlist. Replace with the deployed PWA origin.

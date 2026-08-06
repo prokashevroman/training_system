@@ -168,6 +168,52 @@ describe("CloudflareWorkoutParser", () => {
     expect(draft.sessions).toHaveLength(1);
   });
 
+  it("maps null on required enum/text fields to their unstated members, not a retry", async () => {
+    // Verbatim failure mode observed live: a literal model obeys "never invent"
+    // by emitting null for everything "3 sets of 10 pushups" does not state,
+    // which used to burn the repair attempt and then 422.
+    const nulled = {
+      ...modelDraft,
+      warnings: [
+        { code: "PARTIAL_PARSE", message: "kept", sourceFragment: "x", severity: "info" },
+        { code: "UNKNOWN_LOAD_SCOPE", message: "invented", sourceFragment: "x", severity: "info" },
+      ],
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          title: null,
+          activities: [
+            {
+              ...modelDraft.sessions[0]!.activities[0],
+              objective: null,
+              intensity: null,
+              strengthSets: modelDraft.sessions[0]!.activities[0]!.strengthSets.map((set) => ({
+                ...set,
+                setType: null,
+                loadValue: null,
+                loadUnit: null,
+                loadKg: null,
+                loadScope: null,
+              })),
+            },
+          ],
+        },
+      ],
+    };
+    const ai = fakeAi([chatResponse(nulled)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    expect(draft.metadata.attempts).toBe(1);
+    expect(draft.sessions[0]?.title).toBe("Training session");
+    expect(draft.sessions[0]?.activities[0]?.objective).toBe("unknown");
+    expect(draft.sessions[0]?.activities[0]?.intensity).toBe("unknown");
+    const set = draft.sessions[0]?.activities[0]?.strengthSets[0];
+    expect(set?.setType).toBe("working");
+    expect(set?.loadUnit).toBe("none");
+    expect(set?.loadScope).toBe("unknown");
+    // The representable warning survives; only the invented code is dropped.
+    expect(draft.warnings.map((warning) => warning.code)).toEqual(["PARTIAL_PARSE"]);
+  });
+
   it("retries once when the first response is not JSON, then succeeds", async () => {
     const ai = fakeAi([chatResponse("Sure! Here is your workout:"), chatResponse(modelDraft)]);
     const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
@@ -181,7 +227,17 @@ describe("CloudflareWorkoutParser", () => {
   });
 
   it("retries once on a schema failure and feeds the issues back", async () => {
-    const broken = { ...modelDraft, sessions: [{ ...modelDraft.sessions[0], title: "" }] };
+    // A wrong non-null enum value: normalisation heals only null/empty
+    // ("unstated"), so an actual misreading must still go through repair.
+    const broken = {
+      ...modelDraft,
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          activities: [{ ...modelDraft.sessions[0]!.activities[0], intensity: "medium" }],
+        },
+      ],
+    };
     const ai = fakeAi([chatResponse(broken), chatResponse(modelDraft)]);
     const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
 
@@ -189,7 +245,7 @@ describe("CloudflareWorkoutParser", () => {
     const repairMessage = (
       ai.calls[1]?.input as { messages: Array<{ content: string }> }
     ).messages.at(-1)?.content;
-    expect(repairMessage).toContain("sessions.0.title");
+    expect(repairMessage).toContain("sessions.0.activities.0.intensity");
   });
 
   it("returns schema_invalid rather than a partial guess after the retry fails", async () => {

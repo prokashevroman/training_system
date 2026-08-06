@@ -65,7 +65,7 @@ export async function withSchemaRetry<S extends ZodTypeAny>(
     repairHint = [
       "The previous response failed schema validation with these problems:",
       ...lastIssues.map((issue) => `- ${issue}`),
-      "Return corrected JSON only. Do not invent values to satisfy the schema: use null and add a warning instead.",
+      'Return corrected JSON only. Do not invent values to satisfy the schema: where a field allows null use null and add a warning; where an enum offers "unknown" use that instead.',
     ].join("\n");
   }
 
