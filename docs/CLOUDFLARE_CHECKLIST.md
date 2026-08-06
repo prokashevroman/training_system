@@ -170,13 +170,21 @@ nothing to commit by accident.
 
 **Where:** browser → <https://developers.cloudflare.com/workers-ai/models/>.
 
-**Why:** the IDs in `wrangler.jsonc` are the brief's _preferences_, never checked
-against the live catalogue. A deprecated ID fails at the first real request, not
-at deploy.
+**Why:** a deprecated ID fails at the first real request, not at deploy. Two
+properties matter more than being current, and the original picks failed both:
+
+- **Not a reasoning model.** Anything tagged `Reasoning: Yes` deliberates before
+  answering, so a trivial "3x10 pushups" costs the same thinking trace as a Murph
+  and bills those tokens as output.
+- **On the JSON Mode list** —
+  <https://developers.cloudflare.com/workers-ai/features/json-mode/>. A model
+  absent from it ignores `response_format`, prepends prose or `<think>`, and
+  `JSON.parse` then fails — spending a second full model call on repair.
+
 **Worked when:** `@cf/openai/whisper-large-v3-turbo` is present and current, and
-`@cf/qwen/qwen3-30b-a3b-fp8` is too and still supports JSON Mode /
-schema-constrained output. If not, change only `STT_MODEL`,
-`WORKOUT_PARSER_MODEL`, `PLANNER_MODEL` — model IDs live nowhere else.
+`@cf/meta/llama-3.3-70b-instruct-fp8-fast` is both non-reasoning and JSON
+Mode–capable. If either moves, change only `STT_MODEL`, `WORKOUT_PARSER_MODEL`,
+`PLANNER_MODEL` — model IDs live nowhere else.
 
 ### 11. Fix `wrangler.jsonc` before deploying — do not skip this
 
@@ -260,11 +268,11 @@ drafts.
 **Where:** browser → Vercel → your project → **Settings → Environment
 Variables**. Set all three for **Production and Preview**:
 
-| Name                     | Value                                                        |
-| ------------------------ | ------------------------------------------------------------ |
+| Name                     | Value                                                               |
+| ------------------------ | ------------------------------------------------------------------- |
 | `VITE_SUPABASE_URL`      | the hosted project URL — bare, **no `/rest/v1`**, no trailing slash |
-| `VITE_SUPABASE_ANON_KEY` | the hosted publishable key (`sb_publishable_…`)              |
-| `VITE_AI_WORKER_URL`     | `https://training-ai-worker.<subdomain>.workers.dev`         |
+| `VITE_SUPABASE_ANON_KEY` | the hosted publishable key (`sb_publishable_…`)                     |
+| `VITE_AI_WORKER_URL`     | `https://training-ai-worker.<subdomain>.workers.dev`                |
 
 **Why:** nothing on your machine reaches Vercel — every populated env file is
 gitignored, so these three exist only here. Two failure modes, both silent:

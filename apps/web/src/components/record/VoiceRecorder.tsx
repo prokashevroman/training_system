@@ -6,7 +6,7 @@ import {
   queuePendingDraft,
   WorkerError,
 } from "../../lib/ai-worker.js";
-import { todayLocalDate } from "../../lib/queries.js";
+import { todayLocalDate, useParserContext } from "../../lib/queries.js";
 import { formatTimer, useRecorder, MAX_RECORDING_SECONDS } from "../../lib/voice.js";
 
 /**
@@ -29,11 +29,18 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
   const [sendError, setSendError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const configured = isVoiceConfigured();
+  // Prefetched on render, not on tap: the vocabulary is cached reference data, and
+  // fetching it inside the request would add a round trip to every recording.
+  const parserContext = useParserContext();
 
   const context = () => ({
     timezone: "Europe/Amsterdam",
     localDate: todayLocalDate(),
     idempotencyKey: crypto.randomUUID(),
+    // Undefined while the query is still in flight or has failed. The Worker
+    // treats a missing context as empty, so a draft is still produced — just
+    // without slug hints, which is strictly better than blocking on this.
+    context: parserContext.data,
   });
 
   async function send(fn: () => Promise<unknown>, fallbackText: string) {

@@ -144,6 +144,30 @@ describe("CloudflareWorkoutParser", () => {
     expect(draft.sessions).toHaveLength(1);
   });
 
+  it("strips a reasoning preamble without spending the repair attempt", async () => {
+    const ai = fakeAi([
+      chatResponse(
+        `<think>The athlete said 3x5. That is three sets.</think>\n${JSON.stringify(modelDraft)}`,
+      ),
+    ]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    // The point of the assertion is the 1: a leaked think block used to cost a
+    // second full model call even though the JSON beside it was already valid.
+    expect(draft.metadata.attempts).toBe(1);
+    expect(draft.sessions).toHaveLength(1);
+  });
+
+  it("recovers JSON wrapped in prose without spending the repair attempt", async () => {
+    const ai = fakeAi([
+      chatResponse(
+        `Here is the draft you asked for:\n${JSON.stringify(modelDraft)}\nHope that helps!`,
+      ),
+    ]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    expect(draft.metadata.attempts).toBe(1);
+    expect(draft.sessions).toHaveLength(1);
+  });
+
   it("retries once when the first response is not JSON, then succeeds", async () => {
     const ai = fakeAi([chatResponse("Sure! Here is your workout:"), chatResponse(modelDraft)]);
     const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);

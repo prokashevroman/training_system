@@ -87,6 +87,29 @@ function stripFences(text: string): string {
   return (fenced?.[1] ?? text).trim();
 }
 
+/**
+ * Removes the reasoning preamble a thinking model emits before its answer.
+ *
+ * The configured models are deliberately non-reasoning, so this should never
+ * fire. It exists because when it does fire the symptom is misleading: the JSON
+ * is present and correct, `JSON.parse` still throws on the `<think>` prefix, and
+ * the cost is a silent second model call rather than a visible error.
+ */
+function stripReasoning(text: string): string {
+  return text.replace(/<(think|thinking|reasoning)>[\s\S]*?<\/\1>/gi, "").trim();
+}
+
+/**
+ * Last resort: the outermost brace-delimited object in a reply that also carries
+ * prose. Narrower than it looks — a reply with no `{` still fails, and the result
+ * is validated against the real Zod schema either way.
+ */
+function extractJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  return start !== -1 && end > start ? text.slice(start, end + 1) : null;
+}
+
 /** Runs a chat completion and returns parsed JSON, or throws a repairable error. */
 export async function runJsonChat(
   ai: AiBinding,
@@ -114,9 +137,18 @@ export async function runJsonChat(
   const response = "result" in parsed.data ? parsed.data.result.response : parsed.data.response;
   if (typeof response !== "string") return response;
 
+  const cleaned = stripFences(stripReasoning(response));
   try {
-    return JSON.parse(stripFences(response));
+    return JSON.parse(cleaned);
   } catch {
+    const embedded = extractJsonObject(cleaned);
+    if (embedded !== null) {
+      try {
+        return JSON.parse(embedded);
+      } catch {
+        // Not JSON after all. Fall through to the repairable error below.
+      }
+    }
     throw new RepairableModelError("The previous response was not valid JSON.");
   }
 }

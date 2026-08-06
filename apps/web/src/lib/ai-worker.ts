@@ -76,6 +76,15 @@ export interface DraftRequestContext {
   timezone: string;
   localDate: string;
   idempotencyKey: string;
+  /**
+   * Exercise vocabulary for the parser prompt. Optional because the Worker
+   * defaults it to empty — but omitting it tells the model the exercise library
+   * does not exist, so it then has to guess every slug from the transcript.
+   */
+  context?: {
+    exerciseAliases: { alias: string; slug: string }[];
+    recentExerciseNames: string[];
+  };
 }
 
 export async function draftFromText(text: string, context: DraftRequestContext): Promise<unknown> {

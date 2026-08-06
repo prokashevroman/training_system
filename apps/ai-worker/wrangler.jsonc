@@ -21,18 +21,19 @@
     "AI_PROVIDER": "cloudflare",
 
     // Model IDs are configuration, never business logic. Change them here (or
-    // per environment) when Cloudflare's catalogue moves.
+    // per environment) when Cloudflare's catalogue moves. `GET /health` echoes
+    // whatever is configured, so a mismatch is visible immediately.
     //
-    // UNVERIFIED: these two IDs are the brief's stated *preferences*. They could
-    // not be checked against Cloudflare's live model catalogue because this repo
-    // has no Cloudflare account yet. Before the first deploy, confirm both are
-    // current and non-deprecated at
-    // https://developers.cloudflare.com/workers-ai/models/ and that the parser
-    // model still supports JSON Mode / schema-constrained output. `GET /health`
-    // echoes whatever is configured here so a mismatch is visible immediately.
+    // The two chat models must be non-reasoning and must appear on Cloudflare's
+    // JSON Mode list: https://developers.cloudflare.com/workers-ai/features/json-mode/
+    // The original choice (`@cf/qwen/qwen3-30b-a3b-fp8`) satisfied neither. It is
+    // tagged Reasoning, so it spent thousands of tokens deliberating over "3x10
+    // pushups", and being absent from the JSON Mode list meant `response_format`
+    // was ignored — its `<think>` preamble then failed `JSON.parse`, costing a
+    // second full model call through `withSchemaRetry` before any answer landed.
     "STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "WORKOUT_PARSER_MODEL": "@cf/qwen/qwen3-30b-a3b-fp8",
-    "PLANNER_MODEL": "@cf/qwen/qwen3-30b-a3b-fp8",
+    "WORKOUT_PARSER_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "PLANNER_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 
     // Comma-separated CORS allowlist. Replace with the deployed PWA origin.
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://training-system-web-rose.vercel.app/",
