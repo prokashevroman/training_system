@@ -6,6 +6,7 @@ import type {
 import { ModelWorkoutDraftSchema } from "@training/ai-contracts";
 import { buildMetadata, finaliseWorkoutDraft, normaliseModelDraft } from "../../draft.js";
 import type { AiBinding } from "../../env.js";
+import { dropNullsWhereDefaulted } from "../../model-nulls.js";
 import { withSchemaRetry } from "../../schema-retry.js";
 import { WORKOUT_PARSER_PROMPT_VERSION, parserSystemPrompt, parserUserPrompt } from "./prompts.js";
 import type { ChatMessage } from "./workers-ai.js";
@@ -43,8 +44,9 @@ export class CloudflareWorkoutParser implements WorkoutParserProvider {
           messages.push({ role: "user", content: repairHint });
         }
         const raw = await runJsonChat(this.ai, this.model, messages, MAX_OUTPUT_TOKENS);
-        return normaliseModelDraft(raw, input);
+        return dropNullsWhereDefaulted(ModelWorkoutDraftSchema, normaliseModelDraft(raw, input));
       },
+      { requestId: input.requestId },
     );
 
     return finaliseWorkoutDraft(

@@ -31,6 +31,30 @@ export interface SchemaRetryResult<T> {
   readonly attempts: number;
 }
 
+export interface SchemaRetryContext {
+  /** Ties the diagnostic log lines to a request. */
+  readonly requestId?: string;
+}
+
+/**
+ * One line per failed attempt, in log.ts's shape. Without this, a draft that
+ * only succeeds via the repair pass looks identical to a clean one from the
+ * outside, and a 422 gives no way to see what the model actually got wrong —
+ * both bit this project in production. Issues are field paths plus
+ * expected/received summaries; the transcript itself never appears in them.
+ */
+function logAttemptIssues(requestId: string | undefined, attempt: number, issues: string[]): void {
+  console.log(
+    JSON.stringify({
+      level: "info",
+      event: "model_schema_issues",
+      requestId: requestId ?? null,
+      attempt,
+      issues: issues.join(" | "),
+    }),
+  );
+}
+
 const MAX_ISSUES_REPORTED = 8;
 
 export function describeIssues(issues: readonly ZodIssue[]): string[] {
@@ -43,6 +67,7 @@ export function describeIssues(issues: readonly ZodIssue[]): string[] {
 export async function withSchemaRetry<S extends ZodTypeAny>(
   schema: S,
   run: (context: ModelAttemptContext) => Promise<unknown>,
+  retryContext: SchemaRetryContext = {},
 ): Promise<SchemaRetryResult<z.output<S>>> {
   let repairHint: string | null = null;
   let lastIssues: string[] = [];
@@ -54,6 +79,7 @@ export async function withSchemaRetry<S extends ZodTypeAny>(
     } catch (error) {
       if (!(error instanceof RepairableModelError)) throw error;
       lastIssues = [error.message];
+      logAttemptIssues(retryContext.requestId, attempt, lastIssues);
       repairHint = error.message;
       continue;
     }
@@ -62,6 +88,7 @@ export async function withSchemaRetry<S extends ZodTypeAny>(
     if (parsed.success) return { value: parsed.data, attempts: attempt };
 
     lastIssues = describeIssues(parsed.error.issues);
+    logAttemptIssues(retryContext.requestId, attempt, lastIssues);
     repairHint = [
       "The previous response failed schema validation with these problems:",
       ...lastIssues.map((issue) => `- ${issue}`),

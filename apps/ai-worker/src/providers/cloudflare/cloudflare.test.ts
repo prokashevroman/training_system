@@ -214,6 +214,158 @@ describe("CloudflareWorkoutParser", () => {
     expect(draft.warnings.map((warning) => warning.code)).toEqual(["PARTIAL_PARSE"]);
   });
 
+  it("derives every positional index from array order rather than retrying", async () => {
+    // The live failure: a circuit's movements arrived without `movementOrder`,
+    // which is required, so a Murph-prep entry 422'd about two times in five.
+    const positionless = {
+      ...modelDraft,
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          activities: [
+            {
+              ...modelDraft.sessions[0]!.activities[0],
+              sequence: undefined,
+              strengthSets: [
+                { ...modelDraft.sessions[0]!.activities[0]!.strengthSets[0], setIndex: undefined },
+              ],
+              circuit: {
+                format: "rounds",
+                roundsPrescribed: 8,
+                name: "cindy",
+                originalText: "8 rounds cindy",
+                movements: [
+                  {
+                    exercise: { rawText: "pull ups", slug: "pull-up", confidence: 1 },
+                    targetReps: 5,
+                    originalText: "5 pull ups",
+                  },
+                  {
+                    exercise: { rawText: "push ups", slug: "push-up", confidence: 1 },
+                    targetReps: 10,
+                    originalText: "10 push ups",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const ai = fakeAi([chatResponse(positionless)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+
+    expect(draft.metadata.attempts).toBe(1);
+    const activity = draft.sessions[0]?.activities[0];
+    expect(activity?.sequence).toBe(1);
+    expect(activity?.strengthSets[0]?.setIndex).toBe(1);
+    expect(activity?.circuit?.movements.map((m) => m.movementOrder)).toEqual([1, 2]);
+  });
+
+  it("lets schema defaults absorb null on any defaulted field, however nested", async () => {
+    // circuit.format was the third field in this class to 422 in production;
+    // the fix is generic, so this asserts the mechanism rather than the field.
+    const nulled = {
+      ...modelDraft,
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          status: null,
+          tags: null,
+          activities: [
+            {
+              ...modelDraft.sessions[0]!.activities[0],
+              circuit: {
+                format: null,
+                roundsPrescribed: 8,
+                originalText: "8 rounds cindy",
+                movements: [
+                  {
+                    exercise: { rawText: "push ups", slug: "push-up", confidence: 1 },
+                    targetReps: 10,
+                    loadScope: null,
+                    originalText: "10 push ups",
+                  },
+                ],
+              },
+            },
+          ],
+        },
+      ],
+    };
+    const ai = fakeAi([chatResponse(nulled)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+
+    expect(draft.metadata.attempts).toBe(1);
+    expect(draft.sessions[0]?.status).toBe("completed");
+    expect(draft.sessions[0]?.tags).toEqual([]);
+    const circuit = draft.sessions[0]?.activities[0]?.circuit;
+    expect(circuit?.format).toBe("rounds");
+    expect(circuit?.movements[0]?.loadScope).toBe("unknown");
+  });
+
+  it("keeps a nullable field's null rather than dropping it", async () => {
+    const withNulls = {
+      ...modelDraft,
+      sessions: [{ ...modelDraft.sessions[0], durationSeconds: null, notes: null }],
+    };
+    const ai = fakeAi([chatResponse(withNulls)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    expect(draft.sessions[0]?.durationSeconds).toBeNull();
+    expect(draft.sessions[0]?.notes).toBeNull();
+  });
+
+  it("keeps a positional index the model did supply", async () => {
+    const renumbered = {
+      ...modelDraft,
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          activities: [{ ...modelDraft.sessions[0]!.activities[0], sequence: 7 }],
+        },
+      ],
+    };
+    const ai = fakeAi([chatResponse(renumbered)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    expect(draft.sessions[0]?.activities[0]?.sequence).toBe(7);
+  });
+
+  it("translates localised loadUnit spellings instead of retrying", async () => {
+    // Observed live with a Russian transcript: the model echoed "кг" and the
+    // repair pass echoed it again, so translation is the only fix that works.
+    const localised = {
+      ...modelDraft,
+      sessions: [
+        {
+          ...modelDraft.sessions[0],
+          activities: [
+            {
+              ...modelDraft.sessions[0]!.activities[0],
+              strengthSets: [
+                { ...modelDraft.sessions[0]!.activities[0]!.strengthSets[0], loadUnit: "кг" },
+                {
+                  ...modelDraft.sessions[0]!.activities[0]!.strengthSets[0],
+                  setIndex: 2,
+                  loadUnit: "KGs",
+                },
+                {
+                  ...modelDraft.sessions[0]!.activities[0]!.strengthSets[0],
+                  setIndex: 3,
+                  loadUnit: "libras",
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    const ai = fakeAi([chatResponse(localised)]);
+    const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);
+    expect(draft.metadata.attempts).toBe(1);
+    const sets = draft.sessions[0]?.activities[0]?.strengthSets ?? [];
+    expect(sets.map((set) => set.loadUnit)).toEqual(["kg", "kg", "lb"]);
+  });
+
   it("retries once when the first response is not JSON, then succeeds", async () => {
     const ai = fakeAi([chatResponse("Sure! Here is your workout:"), chatResponse(modelDraft)]);
     const draft = await new CloudflareWorkoutParser(ai, "@cf/test/parser").parseWorkout(parseInput);

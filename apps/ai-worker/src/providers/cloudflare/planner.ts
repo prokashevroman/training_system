@@ -15,6 +15,7 @@ import {
 import { buildMetadata } from "../../draft.js";
 import type { AiBinding } from "../../env.js";
 import { enforcePlanSafety } from "../../safety-rules.js";
+import { dropNullsWhereDefaulted } from "../../model-nulls.js";
 import { withSchemaRetry } from "../../schema-retry.js";
 import {
   PLANNER_EXPLAIN_PROMPT_VERSION,
@@ -53,8 +54,10 @@ export class CloudflareTrainingPlanner implements TrainingPlannerProvider {
           { role: "user", content: user },
         ];
         if (repairHint !== null) messages.push({ role: "user", content: repairHint });
-        return runJsonChat(this.ai, this.model, messages, MAX_OUTPUT_TOKENS);
+        const raw = await runJsonChat(this.ai, this.model, messages, MAX_OUTPUT_TOKENS);
+        return dropNullsWhereDefaulted(ModelPlanDraftSchema, raw);
       },
+      { requestId: input.requestId },
     );
 
     const safetyFlags = detectSafetyFlags(input.notes ?? "");
@@ -101,6 +104,7 @@ export class CloudflareTrainingPlanner implements TrainingPlannerProvider {
         if (repairHint !== null) messages.push({ role: "user", content: repairHint });
         return runJsonChat(this.ai, this.model, messages, 1024);
       },
+      { requestId: input.requestId },
     );
 
     return PlanExplanationSchema.parse({

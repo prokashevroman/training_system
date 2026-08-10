@@ -8,7 +8,7 @@ import { ModalityEnum, ObjectiveEnum, IntensityEnum, WarningCodeEnum } from "@tr
  * output: the version is stored on every draft, so a regression can be traced to
  * the prompt that produced it.
  */
-export const WORKOUT_PARSER_PROMPT_VERSION = "workout-parser/2";
+export const WORKOUT_PARSER_PROMPT_VERSION = "workout-parser/4";
 export const PLANNER_PROMPT_VERSION = "planner/1";
 export const PLANNER_EXPLAIN_PROMPT_VERSION = "planner-explain/1";
 
@@ -46,6 +46,15 @@ function outputContract(): string {
     '  "sessions": array of sessions. Each session: { "localDate", "title", "durationSeconds"|null, "sessionRpe"|null, "notes"|null, "activities": [...], "tags": [] }.',
     '  Each activity: { "sequence" (1-based), "modality", "objective", "intensity", "subtype"|null, "durationSeconds"|null, "distanceKm"|null, "calories"|null, "avgHeartRateBpm"|null, "notes"|null, "originalText", "strengthSets": [...], "cardioIntervals": [], "circuit": null, "benchmark": null }.',
     '  Each strength set: { "setIndex" (1-based), "exercise": { "rawText", "slug"|null, "apparatus"|null, "confidence" 0..1 }, "setType", "reps"|null, "loadValue"|null, "loadUnit", "loadKg"|null, "loadScope", "rpe"|null, "completed", "originalText" }.',
+    // Previously undocumented, so a circuit workout was guessed at: the model
+    // either invented a movement shape (failing validation) or returned
+    // "movements": [] and silently dropped the round's content.
+    '  Use "circuit" for repeated rounds of movements ("8 rounds cindy: 5 pull ups, 10 push ups, 15 squats"): { "format", "name"|null (the benchmark name if it has one, e.g. "cindy"), "roundsPrescribed"|null, "roundsCompleted"|null, "timeCapSeconds"|null, "completionSeconds"|null, "score"|null, "asPrescribed"|null, "movements": [...], "notes"|null, "originalText" }. Always list the movements — one entry per distinct movement in ONE round, not repeated per round.',
+    '  Each circuit movement: { "movementOrder" (1-based), "exercise" (same shape as above), "targetReps"|null, "targetCalories"|null, "targetDistanceKm"|null, "targetSeconds"|null, "loadValue"|null, "loadUnit", "loadKg"|null, "loadScope", "notes"|null, "originalText" }.',
+    '  Use "cardioIntervals" for repeated timed/measured efforts within one cardio activity: { "intervalIndex" (1-based), "intervalType", "durationSeconds"|null, "restSeconds"|null, "distanceKm"|null, "paceSecondsPerKm"|null, "heartRateBpm"|null, "calories"|null }.',
+    '  Use "benchmark" only for a named standard workout performed as a whole (murph, half-murph, cindy, fran): { "definitionSlug", "variantLabel"|null, "scoring", "totalSeconds"|null, "roundsCompleted"|null, "score"|null, "vestKg"|null, "asPrescribed"|null, "partitionStrategy"|null, "splits": [ { "splitOrder" (1-based), "label", "reps"|null, "distanceKm"|null, "elapsedSeconds"|null, "isCumulative", "referenceFrame" } ], "notes"|null, "originalText" }.',
+    'A session that only *prepares for* or partially mimics a benchmark is not that benchmark: keep it as ordinary activities and put the reference in the title or notes. "cindy" performed as written is a circuit with name "cindy".',
+    'Times written as m:ss are minutes and seconds ("6:05" is 365 seconds). "fc promedio" / "fc" is average heart rate and "lpm" is bpm.',
     '  "warnings": array of { "code", "message", "sourceFragment", "severity" } where severity is info|warning|error.',
     '  "unconsumedFragments": array of { "text", "reason" }.',
     "",
@@ -55,6 +64,7 @@ function outputContract(): string {
     "Allowed loadUnit values: kg, lb, none. Allowed loadScope values: total, per_hand, per_side, added_bodyweight, bodyweight, machine_setting, unknown.",
     `Allowed warning codes: ${WarningCodeEnum.options.join(", ")}.`,
     '"title", "modality", "objective", "intensity" and "setType" are never null. An unstated objective or intensity is "unknown"; an unqualified set is "working"; a title is a short name derived from the content (for example "Pushups").',
+    'Enum values are always the exact Latin strings listed here, whatever language the source uses: Russian "кг" or Spanish "kilos" becomes loadUnit "kg". Free-text fields (title, notes, rawText, originalText) stay in the source language.',
     "Do not set clientRequestKey, source or transcript: the server owns those fields.",
   ].join("\n");
 }

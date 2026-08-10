@@ -33,17 +33,103 @@ export function sessionRequestKey(base: string, index: number): string {
  * is spelling "unstated" differently than the schema does. A wrong non-null
  * value is deliberately left alone for the repair pass to catch.
  */
-function normaliseStrengthSet(raw: unknown): unknown {
+/**
+ * The unit words the app's three source languages (en/ru/es — the same set
+ * `exercise_aliases.language` admits) use for the two units the schema knows.
+ * The model echoes the athlete's own words into `loadUnit` — "кг" for a Russian
+ * transcript (observed live; the repair pass repeated it) — and translating a
+ * spelling is not correcting a reading. Anything unrecognised passes through
+ * untouched for the repair pass to judge.
+ */
+const LOAD_UNIT_SPELLINGS: Record<string, "kg" | "lb"> = {
+  kg: "kg",
+  kgs: "kg",
+  kilo: "kg",
+  kilos: "kg",
+  kilogram: "kg",
+  kilograms: "kg",
+  kilogramo: "kg",
+  kilogramos: "kg",
+  кг: "kg",
+  килограмм: "kg",
+  килограмма: "kg",
+  килограммов: "kg",
+  lb: "lb",
+  lbs: "lb",
+  pound: "lb",
+  pounds: "lb",
+  libra: "lb",
+  libras: "lb",
+  фунт: "lb",
+  фунта: "lb",
+  фунтов: "lb",
+};
+
+function normaliseLoadUnit(raw: unknown): unknown {
+  if (typeof raw !== "string") return raw;
+  const key = raw.trim().toLowerCase().replace(/\.+$/, "");
+  return LOAD_UNIT_SPELLINGS[key] ?? raw;
+}
+
+/**
+ * Fills a positional index from the array position that already encodes it.
+ *
+ * `sequence`, `setIndex`, `movementOrder`, `intervalIndex` and `splitOrder` are
+ * all "1-based position in this array" — required by the schema, derivable
+ * without a model, and pure failure surface when asked for. A circuit whose
+ * movements omitted `movementOrder` is what made a Murph-prep entry fail
+ * roughly two times in five; the array said the order all along.
+ *
+ * A value the model did supply is trusted, so a deliberate renumbering survives.
+ */
+function withPositionalIndex(
+  raw: unknown,
+  field: string,
+  index: number,
+  normaliseChild?: (child: unknown) => unknown,
+): unknown {
   if (typeof raw !== "object" || raw === null) return raw;
-  const set = raw as Record<string, unknown>;
+  const item = raw as Record<string, unknown>;
+  const supplied = item[field];
+  const valid = typeof supplied === "number" && Number.isInteger(supplied) && supplied > 0;
+  const withIndex = { ...item, [field]: valid ? supplied : index + 1 };
+  return normaliseChild ? normaliseChild(withIndex) : withIndex;
+}
+
+function mapIndexed(
+  value: unknown,
+  field: string,
+  normaliseChild?: (child: unknown) => unknown,
+): unknown {
+  if (!Array.isArray(value)) return value;
+  return value.map((item, index) => withPositionalIndex(item, field, index, normaliseChild));
+}
+
+/**
+ * Only the unit *translation* lives here. A `null` load unit is handled
+ * generically by {@link dropNullsWhereDefaulted}, which lets the schema's own
+ * `"none"` default apply.
+ */
+function normaliseLoadFields(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const item = raw as Record<string, unknown>;
+  if (item.loadUnit == null) return item;
+  return { ...item, loadUnit: normaliseLoadUnit(item.loadUnit) };
+}
+
+function normaliseCircuit(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const circuit = raw as Record<string, unknown>;
   return {
-    ...set,
-    setType: set.setType ?? "working",
-    // A bodyweight set has no external load, which models express as null but
-    // the enums spell "none" / "unknown" (observed live with pushups).
-    loadUnit: set.loadUnit ?? "none",
-    loadScope: set.loadScope ?? "unknown",
+    ...circuit,
+    movements: mapIndexed(circuit.movements, "movementOrder", normaliseLoadFields),
   };
+}
+
+function normaliseBenchmark(raw: unknown): unknown {
+  if (typeof raw !== "object" || raw === null) return raw;
+  const benchmark = raw as Record<string, unknown>;
+  return { ...benchmark, splits: mapIndexed(benchmark.splits, "splitOrder") };
 }
 
 function normaliseActivity(raw: unknown): unknown {
@@ -51,11 +137,11 @@ function normaliseActivity(raw: unknown): unknown {
   const activity = raw as Record<string, unknown>;
   return {
     ...activity,
-    objective: activity.objective ?? "unknown",
-    intensity: activity.intensity ?? "unknown",
-    strengthSets: Array.isArray(activity.strengthSets)
-      ? activity.strengthSets.map(normaliseStrengthSet)
-      : activity.strengthSets,
+    strengthSets: mapIndexed(activity.strengthSets, "setIndex", normaliseLoadFields),
+    cardioIntervals: mapIndexed(activity.cardioIntervals, "intervalIndex"),
+    circuit: activity.circuit == null ? activity.circuit : normaliseCircuit(activity.circuit),
+    benchmark:
+      activity.benchmark == null ? activity.benchmark : normaliseBenchmark(activity.benchmark),
   };
 }
 
@@ -110,9 +196,7 @@ export function normaliseModelDraft(raw: unknown, input: ParseWorkoutInput): unk
         rawText,
         transcript: input.source === "voice" ? input.text : (fields.transcript ?? null),
         clientRequestKey: sessionRequestKey(input.clientRequestKey, index),
-        activities: Array.isArray(fields.activities)
-          ? fields.activities.map(normaliseActivity)
-          : fields.activities,
+        activities: mapIndexed(fields.activities, "sequence", normaliseActivity),
       };
     }),
   };
