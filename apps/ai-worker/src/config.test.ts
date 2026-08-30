@@ -1,12 +1,11 @@
 import { AI_LIMITS } from "@training/ai-contracts";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { base64ToBytes, parseJsonBytes, readBytes, validate } from "./body.js";
-import { addDays, isValidTimezone, localDateIn, resolveLocalDate } from "./dates.js";
+import { validate } from "./body.js";
 import { resolveConfig } from "./env.js";
 import { AiHttpError } from "./http-error.js";
 import { createLogger, textSize } from "./log.js";
 import { enforceRateLimit, resetRateLimits } from "./rate-limit.js";
-import { buildRequest, createEnv } from "./testing/harness.js";
+import { createEnv } from "./testing/harness.js";
 import { z } from "zod";
 
 describe("resolveConfig", () => {
@@ -16,9 +15,9 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ AI_PROVIDER: " cloudflare " }).provider).toBe("cloudflare");
   });
 
-  it("leaves model IDs null when unset rather than inventing a default", () => {
+  it("leaves the model ID null when unset rather than inventing a default", () => {
     const config = resolveConfig({});
-    expect(config.models).toEqual({ stt: null, workoutParser: null, planner: null });
+    expect(config.models).toEqual({ stt: null });
   });
 
   it("falls back to the shared limits and overrides them from the environment", () => {
@@ -57,71 +56,7 @@ describe("resolveConfig", () => {
   });
 });
 
-describe("dates", () => {
-  it("accepts a real IANA zone and rejects a made-up one", () => {
-    expect(isValidTimezone("Europe/Madrid")).toBe(true);
-    expect(isValidTimezone("Mars/Olympus")).toBe(false);
-  });
-
-  it("resolves the local date in the athlete's zone, not UTC", () => {
-    // 23:30 in Madrid on 2 August is already 3 August in Tokyo.
-    const instant = new Date("2026-08-02T21:30:00Z");
-    expect(localDateIn("Europe/Madrid", instant)).toBe("2026-08-02");
-    expect(localDateIn("Asia/Tokyo", instant)).toBe("2026-08-03");
-    expect(localDateIn("America/Los_Angeles", instant)).toBe("2026-08-02");
-  });
-
-  it("prefers the client's explicit date", () => {
-    expect(resolveLocalDate("Europe/Madrid", "2026-07-31")).toBe("2026-07-31");
-  });
-
-  it("rejects an unknown timezone with schema_invalid", () => {
-    try {
-      resolveLocalDate("Nowhere/Nothing", null);
-      expect.unreachable("expected a validation error");
-    } catch (error) {
-      expect((error as AiHttpError).code).toBe("schema_invalid");
-    }
-  });
-
-  it("adds days across month and year boundaries", () => {
-    expect(addDays("2026-08-02", 7)).toBe("2026-08-09");
-    expect(addDays("2026-08-31", 1)).toBe("2026-09-01");
-    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
-    expect(addDays("2026-03-28", 3)).toBe("2026-03-31");
-    expect(addDays("2026-08-02", 13)).toBe("2026-08-15");
-  });
-});
-
-describe("body limits", () => {
-  it("rejects an oversized body from the Content-Length header alone", async () => {
-    const request = new Request("https://ai.example/x", {
-      method: "POST",
-      headers: { "content-length": "999999" },
-      body: "small",
-    });
-    const error = await readBytes(request, 100).catch((thrown: unknown) => thrown);
-    expect((error as AiHttpError).code).toBe("payload_too_large");
-    expect((error as AiHttpError).details).toMatchObject({ maxBytes: 100 });
-  });
-
-  it("rejects an oversized body that declared no length", async () => {
-    const request = buildRequest("/x", { method: "POST", body: "x".repeat(200) });
-    request.headers.delete("content-length");
-    const error = await readBytes(request, 100).catch((thrown: unknown) => thrown);
-    expect((error as AiHttpError).code).toBe("payload_too_large");
-  });
-
-  it("accepts a body inside the limit", async () => {
-    const request = buildRequest("/x", { method: "POST", body: "hello" });
-    await expect(readBytes(request, 100)).resolves.toHaveLength(5);
-  });
-
-  it("reports invalid JSON and invalid UTF-8 as schema_invalid", () => {
-    expect(() => parseJsonBytes(new TextEncoder().encode("{oops"))).toThrow(/valid JSON/);
-    expect(() => parseJsonBytes(new Uint8Array([0xff, 0xfe, 0xfd]))).toThrow(/UTF-8/);
-  });
-
+describe("validate", () => {
   it("names the failing paths when validation fails", () => {
     try {
       validate(z.object({ a: z.string() }), {}, "Request body");
@@ -131,11 +66,6 @@ describe("body limits", () => {
       expect(httpError.code).toBe("schema_invalid");
       expect(JSON.stringify(httpError.details)).toContain("a:");
     }
-  });
-
-  it("decodes base64 audio and rejects a corrupt payload", () => {
-    expect(Array.from(base64ToBytes(btoa("abc")))).toEqual([97, 98, 99]);
-    expect(() => base64ToBytes("!!!not base64!!!")).toThrow(/base64/);
   });
 });
 

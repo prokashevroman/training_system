@@ -1,69 +1,45 @@
 import { useState } from "react";
-import {
-  draftFromAudio,
-  draftFromText,
-  isVoiceConfigured,
-  queuePendingDraft,
-  WorkerError,
-} from "../../lib/ai-worker.js";
-import { todayLocalDate, useParserContext } from "../../lib/queries.js";
+import { isVoiceConfigured, transcribe, WorkerError } from "../../lib/ai-worker.js";
 import { formatTimer, useRecorder, MAX_RECORDING_SECONDS } from "../../lib/voice.js";
 
 /**
  * The record button and its states (brief 7.1).
  *
- * Nothing here auto-saves. The Worker returns a draft, the draft is shown with
- * its warnings, and only an explicit Save writes anything — the brief is
- * explicit that AI output must not be saved by default.
+ * Stopping a recording sends it straight to transcription — there is no
+ * "Interpret" step any more because there is no interpreter. The transcript
+ * comes back as plain text and the confirm screen (not this component) is
+ * where it gets saved. Typed text skips the network entirely: with no parser
+ * in the pipeline, typing IS the transcript.
  */
 
 interface Props {
-  /** Called with the Worker's draft response once parsing succeeds. */
-  onDraft: (draft: unknown) => void;
+  /** Called with the transcript (or typed text) to review and save. */
+  onTranscript: (text: string) => void;
   onManual: () => void;
 }
 
-export function VoiceRecorder({ onDraft, onManual }: Props) {
+export function VoiceRecorder({ onTranscript, onManual }: Props) {
   const recorder = useRecorder();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
   const [typed, setTyped] = useState("");
   const configured = isVoiceConfigured();
-  // Prefetched on render, not on tap: the vocabulary is cached reference data, and
-  // fetching it inside the request would add a round trip to every recording.
-  const parserContext = useParserContext();
 
-  const context = () => ({
-    timezone: "Europe/Amsterdam",
-    localDate: todayLocalDate(),
-    idempotencyKey: crypto.randomUUID(),
-    // Undefined while the query is still in flight or has failed. The Worker
-    // treats a missing context as empty, so a draft is still produced — just
-    // without slug hints, which is strictly better than blocking on this.
-    context: parserContext.data,
-  });
-
-  async function send(fn: () => Promise<unknown>, fallbackText: string) {
+  async function sendRecording() {
+    if (!recorder.recording) return;
     setSending(true);
     setSendError(null);
     try {
-      onDraft(await fn());
+      const text = await transcribe(recorder.recording);
       recorder.reset();
+      onTranscript(text);
     } catch (error) {
       if (error instanceof WorkerError) {
         setSendError(`${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`);
       } else {
-        // Almost always a dropped connection. Keep the text so nothing is lost.
-        if (fallbackText) {
-          queuePendingDraft({
-            text: fallbackText,
-            localDate: todayLocalDate(),
-            queuedAt: new Date().toISOString(),
-          });
-        }
-        setSendError(
-          "Could not reach the AI worker. Your text has been queued locally; you can also enter the session manually.",
-        );
+        // Almost always a dropped connection. The recording is still in memory,
+        // so the retry button stays available rather than losing the take.
+        setSendError("Could not reach the transcription service. Check the connection and retry.");
       }
     } finally {
       setSending(false);
@@ -137,10 +113,10 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
               <button
                 type="button"
                 disabled={sending}
-                onClick={() => send(() => draftFromAudio(recorder.recording!, context()), "")}
+                onClick={() => void sendRecording()}
                 className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
               >
-                {sending ? "Transcribing…" : "Interpret"}
+                {sending ? "Transcribing…" : "Transcribe"}
               </button>
               <button
                 type="button"
@@ -163,7 +139,7 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
       <details className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
         <summary className="cursor-pointer text-sm text-slate-300">Type it instead</summary>
         <p className="mt-2 text-xs text-slate-500">
-          The same parser, without the microphone. Useful when speaking is awkward.
+          Goes straight to the same confirm screen — no network, no waiting.
         </p>
         <textarea
           value={typed}
@@ -174,11 +150,14 @@ export function VoiceRecorder({ onDraft, onManual }: Props) {
         />
         <button
           type="button"
-          disabled={sending || typed.trim().length === 0}
-          onClick={() => send(() => draftFromText(typed.trim(), context()), typed.trim())}
+          disabled={typed.trim().length === 0}
+          onClick={() => {
+            onTranscript(typed.trim());
+            setTyped("");
+          }}
           className="mt-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
-          {sending ? "Interpreting…" : "Interpret text"}
+          Use this text
         </button>
       </details>
 

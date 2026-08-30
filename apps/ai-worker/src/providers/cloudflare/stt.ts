@@ -1,6 +1,6 @@
 import type { AudioInput, SpeechToTextProvider, TranscriptResult } from "@training/ai-contracts";
 import type { AiBinding } from "../../env.js";
-import { buildMetadata } from "../../draft.js";
+import { buildMetadata } from "../metadata.js";
 import { bytesToBase64, runTranscription } from "./workers-ai.js";
 
 export const STT_PROMPT_VERSION = "stt/1";

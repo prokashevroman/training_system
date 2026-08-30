@@ -166,26 +166,18 @@ npx wrangler whoami
 nothing to commit by accident.
 **Worked when:** `whoami` prints your email and account ID.
 
-### 10. Check the three model IDs are still current
+### 10. Check the model ID is still current
 
 **Where:** browser → <https://developers.cloudflare.com/workers-ai/models/>.
 
-**Why:** a deprecated ID fails at the first real request, not at deploy. The one
-hard rule: **never a reasoning model.** Anything tagged `Reasoning: Yes`
-deliberates before answering, so a trivial "3x10 pushups" costs the same thinking
-trace as a Murph, bills those tokens as output, and its `<think>` preamble breaks
-JSON parsing. The original pick (`@cf/qwen/qwen3-30b-a3b-fp8`) was one.
+**Why:** a deprecated ID fails at the first real request, not at deploy. Since
+the 2026-08 simplification the Worker calls exactly one model — Whisper for
+transcription. There is no parser and no planner any more; the transcript is
+saved as-is and the athlete adds structure by hand if they want it.
 
-The two roles are also picked on different criteria — the comment above the IDs
-in `wrangler.jsonc` records the live measurements behind the choice: the parser
-is latency-critical (someone is holding their phone waiting), the planner is
-rare and quality-first.
-
-**Worked when:** `@cf/openai/whisper-large-v3-turbo`,
-`@cf/meta/llama-4-scout-17b-16e-instruct` (parser) and
-`@cf/meta/llama-3.3-70b-instruct-fp8-fast` (planner) are all present and
-non-deprecated. If one moves, change only `STT_MODEL`, `WORKOUT_PARSER_MODEL`,
-`PLANNER_MODEL` — model IDs live nowhere else.
+**Worked when:** `@cf/openai/whisper-large-v3-turbo` is present and
+non-deprecated. If it moves, change only `STT_MODEL` — model IDs live nowhere
+else.
 
 ### 11. Fix `wrangler.jsonc` before deploying — do not skip this
 
@@ -260,9 +252,9 @@ curl -s https://training-ai-worker.<subdomain>.workers.dev/health | jq
 ```
 
 **Why:** the one check that catches a deploy which silently kept the mock provider.
-**Worked when:** `"provider": "cloudflare"` and your three real model IDs. If it
-says `mock`, the deployed `vars` are wrong and the app is returning fabricated
-drafts.
+**Worked when:** `"provider": "cloudflare"` and
+`"models": { "stt": "@cf/openai/whisper-large-v3-turbo" }`. If it says `mock`,
+the deployed `vars` are wrong and the app is returning a fabricated transcript.
 
 ### 16. Give Vercel the three environment variables
 
@@ -313,7 +305,7 @@ your machine has no effect.
 | Supabase JWT secret     | the `JWT secret` from `supabase status` — or browser → **Project Settings → API → JWT Settings** |
 | Supabase project URL    | the `API URL` from `supabase status` — or browser → **Project Settings → API → Project URL**     |
 | Your PWA's origin       | local: the URL the Vite dev server prints. Production: wherever you deployed the PWA             |
-| The three model IDs     | browser → <https://developers.cloudflare.com/workers-ai/models/>                                 |
+| The STT model ID        | browser → <https://developers.cloudflare.com/workers-ai/models/>                                 |
 
 ---
 

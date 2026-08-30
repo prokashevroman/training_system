@@ -47,7 +47,7 @@ describe("isOriginAllowed", () => {
 
 describe("evaluateCors", () => {
   it("allows a listed origin and echoes it back", () => {
-    const decision = evaluate("/v1/plans/draft", TEST_ORIGIN);
+    const decision = evaluate("/v1/transcriptions", TEST_ORIGIN);
     expect(decision.allowedOrigin).toBe(TEST_ORIGIN);
     const headers = corsHeaders(decision);
     expect(headers.get("access-control-allow-origin")).toBe(TEST_ORIGIN);
@@ -55,9 +55,9 @@ describe("evaluateCors", () => {
   });
 
   it("rejects an unlisted origin", () => {
-    expect(() => evaluate("/v1/plans/draft", "https://evil.example")).toThrow(AiHttpError);
+    expect(() => evaluate("/v1/transcriptions", "https://evil.example")).toThrow(AiHttpError);
     try {
-      evaluate("/v1/plans/draft", "https://evil.example");
+      evaluate("/v1/transcriptions", "https://evil.example");
     } catch (error) {
       const httpError = error as AiHttpError;
       expect(httpError.code).toBe("forbidden_origin");
@@ -68,7 +68,7 @@ describe("evaluateCors", () => {
   });
 
   it("rejects a /v1 request with no Origin header", () => {
-    expect(() => evaluate("/v1/workout-drafts/from-text", null)).toThrow(/Origin/);
+    expect(() => evaluate("/v1/transcriptions", null)).toThrow(/Origin/);
   });
 
   it("allows /health with no Origin and sets no CORS headers", () => {

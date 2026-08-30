@@ -10,7 +10,7 @@
   },
   // Workers AI. Exposed to code as `env.AI` (brief 7.4). This is the only
   // binding the Worker has: it deliberately has no Supabase service-role key and
-  // no database access, because it never writes approved records.
+  // no database access, because it never writes records.
   "ai": {
     "binding": "AI",
   },
@@ -20,26 +20,15 @@
     // Cloudflare account and makes no network calls.
     "AI_PROVIDER": "cloudflare",
 
-    // Model IDs are configuration, never business logic. Change them here (or
-    // per environment) when Cloudflare's catalogue moves. `GET /health` echoes
-    // whatever is configured, so a mismatch is visible immediately.
+    // The one model this Worker calls. Model IDs are configuration, never
+    // business logic — change it here when Cloudflare's catalogue moves.
+    // `GET /health` echoes whatever is configured, so a mismatch is visible
+    // immediately.
     //
-    // Chat models must be NON-REASONING. The original `@cf/qwen/qwen3-30b-a3b-fp8`
-    // is tagged Reasoning: it spent thousands of tokens deliberating over "3x10
-    // pushups" and its `<think>` preamble failed `JSON.parse`, costing a second
-    // full model call through `withSchemaRetry` before any answer landed.
-    //
-    // The two roles are picked on different criteria, measured live 2026-08-06:
-    //  - Parser: user waits on it after every recording. Scout answered the test
-    //    inputs in 3-15s where the 70b took a steady 25-35s, at equal draft
-    //    quality; 8b-fast was quick but invented warning codes. The safety nets
-    //    in draft.ts/workers-ai.ts (null healing, think-strip, prose extraction)
-    //    do the schema-compliance work, so JSON Mode support is a nice-to-have
-    //    here rather than a requirement.
-    //  - Planner: called rarely and deliberately, so quality beats latency.
+    // There is deliberately no parser or planner model any more: the Worker
+    // only transcribes. What a recording means is decided by the athlete in
+    // the browser, not by an LLM guessing reps out of prose.
     "STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "WORKOUT_PARSER_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct",
-    "PLANNER_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
 
     // Comma-separated CORS allowlist. Replace with the deployed PWA origin.
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://training-system-web-rose.vercel.app/",
@@ -56,10 +45,8 @@
 
     // Limits (brief 7.2 step 3). Empty/absent falls back to the shared defaults
     // in @training/ai-contracts.
-    "MAX_JSON_BODY_BYTES": "131072",
     "MAX_AUDIO_BYTES": "10485760",
     "MAX_AUDIO_SECONDS": "300",
-    "MAX_TEXT_CHARS": "12000",
     "RATE_LIMIT_PER_MINUTE": "30",
   },
   // --- Secrets ---------------------------------------------------------------

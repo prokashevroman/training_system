@@ -1,29 +1,14 @@
 import { z } from "zod";
 import type { AiBinding } from "../../env.js";
 import { AiHttpError } from "../../http-error.js";
-import { RepairableModelError } from "../../schema-retry.js";
 
 /**
- * The thin layer between `env.AI` and the providers.
+ * The thin layer between `env.AI` and the transcription provider.
  *
- * Workers AI response shapes vary by model and have changed over time, so nothing
- * here assumes a shape: results are validated, and an unreadable result is
- * classified as either *repairable* (bad JSON — worth one retry with a hint) or
- * *upstream* (the binding itself failed, retrying the same call will not help).
+ * Workers AI response shapes vary by model and have changed over time, so
+ * nothing here assumes a shape: results are validated, and an unreadable
+ * result surfaces as `upstream_error` rather than silent nonsense.
  */
-
-export interface ChatMessage {
-  readonly role: "system" | "user" | "assistant";
-  readonly content: string;
-}
-
-/** `{ response: ... }` is the documented chat shape; `result` wraps it in the REST API. */
-const ChatResponseSchema = z.union([
-  z.object({ response: z.union([z.string(), z.record(z.string(), z.unknown())]) }),
-  z.object({
-    result: z.object({ response: z.union([z.string(), z.record(z.string(), z.unknown())]) }),
-  }),
-]);
 
 const TranscriptionResponseSchema = z.union([
   z.object({
@@ -81,78 +66,6 @@ async function callBinding(
   }
 }
 
-/** Strips a fenced code block, which chat models add even when told not to. */
-function stripFences(text: string): string {
-  const fenced = /^\s*```(?:json)?\s*([\s\S]*?)\s*```\s*$/.exec(text);
-  return (fenced?.[1] ?? text).trim();
-}
-
-/**
- * Removes the reasoning preamble a thinking model emits before its answer.
- *
- * The configured models are deliberately non-reasoning, so this should never
- * fire. It exists because when it does fire the symptom is misleading: the JSON
- * is present and correct, `JSON.parse` still throws on the `<think>` prefix, and
- * the cost is a silent second model call rather than a visible error.
- */
-function stripReasoning(text: string): string {
-  return text.replace(/<(think|thinking|reasoning)>[\s\S]*?<\/\1>/gi, "").trim();
-}
-
-/**
- * Last resort: the outermost brace-delimited object in a reply that also carries
- * prose. Narrower than it looks — a reply with no `{` still fails, and the result
- * is validated against the real Zod schema either way.
- */
-function extractJsonObject(text: string): string | null {
-  const start = text.indexOf("{");
-  const end = text.lastIndexOf("}");
-  return start !== -1 && end > start ? text.slice(start, end + 1) : null;
-}
-
-/** Runs a chat completion and returns parsed JSON, or throws a repairable error. */
-export async function runJsonChat(
-  ai: AiBinding,
-  model: string,
-  messages: readonly ChatMessage[],
-  maxTokens: number,
-): Promise<unknown> {
-  const raw = await callBinding(ai, model, {
-    messages,
-    // JSON Mode is the portable request for structured output. Models that
-    // ignore the hint still succeed via stripFences + JSON.parse below; models
-    // that reject the parameter surface as upstream_error, which is the clear
-    // failure the brief wants for an incompatible configured model.
-    response_format: { type: "json_object" },
-    temperature: 0,
-    max_tokens: maxTokens,
-  });
-
-  const parsed = ChatResponseSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new AiHttpError("upstream_error", "The AI model returned an unrecognised response.", {
-      model,
-    });
-  }
-  const response = "result" in parsed.data ? parsed.data.result.response : parsed.data.response;
-  if (typeof response !== "string") return response;
-
-  const cleaned = stripFences(stripReasoning(response));
-  try {
-    return JSON.parse(cleaned);
-  } catch {
-    const embedded = extractJsonObject(cleaned);
-    if (embedded !== null) {
-      try {
-        return JSON.parse(embedded);
-      } catch {
-        // Not JSON after all. Fall through to the repairable error below.
-      }
-    }
-    throw new RepairableModelError("The previous response was not valid JSON.");
-  }
-}
-
 export async function runTranscription(
   ai: AiBinding,
   model: string,
@@ -164,9 +77,7 @@ export async function runTranscription(
     throw new AiHttpError(
       "upstream_error",
       "The transcription model returned an unexpected shape.",
-      {
-        model,
-      },
+      { model },
     );
   }
   const result = "result" in parsed.data ? parsed.data.result : parsed.data;

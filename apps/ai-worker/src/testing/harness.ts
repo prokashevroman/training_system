@@ -77,10 +77,6 @@ export function buildRequest(path: string, options: RequestOptions = {}): Reques
   });
 }
 
-export function postJson(path: string, body: unknown, options: RequestOptions = {}): Request {
-  return buildRequest(path, { ...options, method: "POST", body: JSON.stringify(body) });
-}
-
 export interface FakeAi extends AiBinding {
   readonly calls: Array<{ model: string; input: Record<string, unknown> }>;
 }
@@ -102,9 +98,4 @@ export function fakeAi(responses: readonly unknown[]): FakeAi {
       return next;
     },
   };
-}
-
-/** A chat response in the documented Workers AI shape. */
-export function chatResponse(value: unknown): { response: string } {
-  return { response: typeof value === "string" ? value : JSON.stringify(value) };
 }

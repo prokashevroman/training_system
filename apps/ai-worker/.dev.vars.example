@@ -7,7 +7,7 @@
 #
 # SECRET?  | variable
 # ---------|---------------------------------------------------------------
-#  no      | AI_PROVIDER, STT_MODEL, WORKOUT_PARSER_MODEL, PLANNER_MODEL,
+#  no      | AI_PROVIDER, STT_MODEL,
 #          | ALLOWED_ORIGINS, SUPABASE_URL, SUPABASE_JWT_ISSUER,
 #          | MAX_* limits, RATE_LIMIT_PER_MINUTE, LOG_LEVEL
 #  YES     | SUPABASE_JWT_SECRET   (set in production with
@@ -29,8 +29,6 @@ AI_PROVIDER=mock
 # still supports JSON Mode / schema-constrained output. Swap in a current
 # non-deprecated open-weight model if not.
 STT_MODEL=@cf/openai/whisper-large-v3-turbo
-WORKOUT_PARSER_MODEL=@cf/qwen/qwen3-30b-a3b-fp8
-PLANNER_MODEL=@cf/qwen/qwen3-30b-a3b-fp8
 
 # --- CORS (NOT a secret) -----------------------------------------------------
 # Comma-separated exact origins. No wildcards. A request whose `Origin` is not
@@ -57,10 +55,8 @@ SUPABASE_URL=http://127.0.0.1:54321
 SUPABASE_JWT_SECRET=super-secret-jwt-token-with-at-least-32-characters-long
 
 # --- Limits (NOT secrets) ----------------------------------------------------
-MAX_JSON_BODY_BYTES=131072
 MAX_AUDIO_BYTES=10485760
 MAX_AUDIO_SECONDS=300
-MAX_TEXT_CHARS=12000
 RATE_LIMIT_PER_MINUTE=30
 
 # `debug` logs request metadata only. Bearer tokens, raw audio and transcript

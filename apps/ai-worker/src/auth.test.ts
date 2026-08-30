@@ -17,7 +17,7 @@ import {
  */
 
 function authRequest(token: string | null): Request {
-  return buildRequest("/v1/workout-drafts/from-text", {
+  return buildRequest("/v1/transcriptions", {
     method: "POST",
     ...(token === null ? {} : { token }),
   });
@@ -78,7 +78,7 @@ describe("authenticate (symmetric HS256 fallback)", () => {
   });
 
   it("ignores any user id in the request body", async () => {
-    const request = new Request("https://ai.example/v1/workout-drafts/from-text", {
+    const request = new Request("https://ai.example/v1/transcriptions", {
       method: "POST",
       headers: {
         authorization: `Bearer ${await signToken()}`,

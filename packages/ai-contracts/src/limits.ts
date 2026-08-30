@@ -6,21 +6,10 @@
  * These are defaults; the Worker may lower them from environment variables.
  */
 export const AI_LIMITS = {
-  /** JSON request bodies (`from-text`, `plans/draft`). */
-  maxJsonBodyBytes: 128 * 1024,
-  /** Free text or transcript handed to the parser. */
-  maxTextChars: 12_000,
   /** Uploaded audio, independent of duration: ~10 MB of Opus is far past 5 min. */
   maxAudioBytes: 10 * 1024 * 1024,
   /** Brief section 7.1: app-level recording cap of five minutes. */
   maxAudioDurationSeconds: 300,
-  /** Alias/recent-name hints the client may attach as parser context. */
-  maxAliasHints: 400,
-  maxRecentExerciseNames: 200,
-  /** Planning horizon of one training block. */
-  maxPlanWeeks: 8,
-  /** Recent-session summaries accepted as planner context. */
-  maxPlanContextSessions: 60,
 } as const;
 
 export type AiLimits = typeof AI_LIMITS;

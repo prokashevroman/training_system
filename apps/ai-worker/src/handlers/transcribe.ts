@@ -1,31 +1,30 @@
-import type { FromAudioMeta, FromAudioResponse, ParseWorkoutInput } from "@training/ai-contracts";
+import type { TranscribeMeta, TranscribeResponse } from "@training/ai-contracts";
 import {
-  FromAudioJsonRequestSchema,
-  FromAudioMetaSchema,
-  FromAudioResponseSchema,
   isSupportedAudioMimeType,
+  TranscribeMetaSchema,
+  TranscribeResponseSchema,
 } from "@training/ai-contracts";
-import { base64ToBytes, parseJsonBytes, readBytes, validate } from "../body.js";
-import { resolveLocalDate } from "../dates.js";
+import { validate } from "../body.js";
 import { AiHttpError } from "../http-error.js";
 import { textSize } from "../log.js";
 import type { RequestContext } from "./context.js";
 
 /**
- * `POST /v1/workout-drafts/from-audio`.
+ * `POST /v1/transcriptions`.
  *
- * Transcribe, then parse, then return a draft. The audio exists only for the
+ * Transcribe and return the text — nothing else. The audio exists only for the
  * duration of this call: it is never written anywhere and never logged, and the
  * transcript is logged as a length, not as text (brief 7.1, section 12).
  *
- * Two body shapes are accepted because `MediaRecorder` output is easiest to send
- * as multipart, while a queued offline draft is easiest to store and replay as
- * JSON.
+ * The Worker deliberately does not parse the transcript into structure. What a
+ * recording *means* is the athlete's edit to make, in the browser, against
+ * their own rows; this endpoint's only promise is that whatever was said comes
+ * back as text.
  */
 
 interface AudioPayload {
   readonly bytes: Uint8Array;
-  readonly meta: FromAudioMeta;
+  readonly meta: TranscribeMeta;
 }
 
 async function readMultipart(context: RequestContext): Promise<AudioPayload> {
@@ -54,7 +53,7 @@ async function readMultipart(context: RequestContext): Promise<AudioPayload> {
   } catch {
     throw new AiHttpError("schema_invalid", "The `meta` field is not valid JSON.");
   }
-  const meta = validate(FromAudioMetaSchema, metaJson, "Audio metadata");
+  const meta = validate(TranscribeMetaSchema, metaJson, "Audio metadata");
 
   // `@cloudflare/workers-types` declares `FormData.get()` as `string | null`,
   // but workerd returns a File for a file part. Rather than assert a type the
@@ -77,31 +76,14 @@ async function readMultipart(context: RequestContext): Promise<AudioPayload> {
   return { bytes: new Uint8Array(await audio.arrayBuffer()), meta };
 }
 
-async function readJsonAudio(context: RequestContext): Promise<AudioPayload> {
-  const { config } = context;
-  // Base64 inflates by 4/3, so the JSON body limit is derived from the audio one
-  // rather than the (much smaller) JSON limit.
-  const maxJsonBytes = Math.ceil(config.limits.maxAudioBytes * 1.4) + 4096;
-  const bytes = await readBytes(context.request, maxJsonBytes);
-  const body = validate(FromAudioJsonRequestSchema, parseJsonBytes(bytes), "Request body");
-  const audioBytes = base64ToBytes(body.audioBase64);
-  if (audioBytes.byteLength > config.limits.maxAudioBytes) {
-    throw new AiHttpError("payload_too_large", "Audio payload is too large.", {
-      maxBytes: config.limits.maxAudioBytes,
-      actualBytes: audioBytes.byteLength,
-    });
-  }
-  const { audioBase64: _audioBase64, ...meta } = body;
-  return { bytes: audioBytes, meta };
-}
-
-export async function handleFromAudio(context: RequestContext): Promise<FromAudioResponse> {
-  const { config, providers, requestId, logger, user } = context;
+export async function handleTranscribe(context: RequestContext): Promise<TranscribeResponse> {
+  const { config, providers, logger, user } = context;
   const contentType = context.request.headers.get("content-type") ?? "";
+  if (!contentType.includes("multipart/form-data")) {
+    throw new AiHttpError("schema_invalid", "Send the recording as multipart/form-data.");
+  }
 
-  const payload = contentType.includes("multipart/form-data")
-    ? await readMultipart(context)
-    : await readJsonAudio(context);
+  const payload = await readMultipart(context);
 
   if (payload.bytes.byteLength === 0) {
     throw new AiHttpError("schema_invalid", "Audio payload is empty.");
@@ -133,44 +115,21 @@ export async function handleFromAudio(context: RequestContext): Promise<FromAudi
   if (transcript.text.trim() === "") {
     throw new AiHttpError("upstream_error", "The recording produced an empty transcript.");
   }
-  if (transcript.text.length > config.limits.maxTextChars) {
-    throw new AiHttpError("payload_too_large", "Transcript is longer than the configured limit.", {
-      maxTextChars: config.limits.maxTextChars,
-    });
-  }
 
-  const nowLocalDate = resolveLocalDate(payload.meta.timezone, payload.meta.localDate);
-  const input: ParseWorkoutInput = {
-    text: transcript.text,
-    nowLocalDate,
-    timezone: payload.meta.timezone,
-    preferredUnits: payload.meta.preferredUnits,
-    source: "voice",
-    exerciseAliases: payload.meta.context.exerciseAliases,
-    recentExerciseNames: payload.meta.context.recentExerciseNames,
-    clientRequestKey: `voice:${user.userId}:${payload.meta.idempotencyKey}`,
-    requestId,
-  };
-
-  const draft = await providers.workoutParser.parseWorkout(input);
   const response = validate(
-    FromAudioResponseSchema,
-    { ...draft, transcript: transcript.text, transcription: transcript.metadata },
-    "Parser response",
+    TranscribeResponseSchema,
+    { transcript: transcript.text, transcription: transcript.metadata },
+    "Transcription response",
   );
 
-  logger.info("workout_draft_from_audio", {
+  logger.info("transcription_completed", {
     userId: user.userId,
     provider: providers.name,
     audioBytes: payload.bytes.byteLength,
     audioSeconds: payload.meta.durationSeconds,
     // Length only. The transcript itself is never logged.
     transcriptChars: textSize(transcript.text),
-    sessions: response.sessions.length,
-    warnings: response.warnings.length,
-    unconsumedFragments: response.unconsumedFragments.length,
-    attempts: response.metadata.attempts,
-    latencyMs: response.metadata.latencyMs,
+    latencyMs: response.transcription.latencyMs,
   });
 
   return response;

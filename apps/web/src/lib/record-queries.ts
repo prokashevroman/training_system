@@ -475,6 +475,77 @@ export function useSaveManualSession() {
   });
 }
 
+// --- Voice save ---------------------------------------------------------------
+
+/**
+ * One key per *recording*, minted when the transcript screen opens — not per
+ * save attempt — so a double-tap on Save cannot write two sessions.
+ */
+export function newVoiceRequestKey(): string {
+  return `voice:${crypto.randomUUID()}`;
+}
+
+export interface SaveVoiceSessionInput {
+  transcript: string;
+  title: string;
+  localDate: string;
+  requestKey: string;
+}
+
+/**
+ * Saves a transcript as a complete session row. No activities, no sets: the
+ * transcript IS the record (`raw_text` keeps it verbatim, per the schema's
+ * "every structured record must stay re-derivable" rule), and any structure is
+ * the athlete's to add later. This replaces the old AI parsing pipeline — the
+ * one step between speech and the database is now the athlete reading what was
+ * heard and tapping Save.
+ */
+export function useSaveVoiceSession() {
+  const queryClient = useQueryClient();
+  const { userId } = useAuth();
+
+  return useMutation<SaveManualSessionResult, Error, SaveVoiceSessionInput>({
+    mutationFn: async ({ transcript, title, localDate, requestKey }) => {
+      if (!userId) throw new Error("Not signed in.");
+      const text = transcript.trim();
+      if (text === "") throw new Error("The transcript is empty.");
+
+      const row: TablesInsert<"workout_sessions"> = {
+        user_id: userId,
+        local_date: localDate,
+        title: title.trim() === "" ? "Voice session" : title.trim(),
+        source: "voice",
+        raw_text: text,
+        transcript: text,
+        client_request_key: requestKey,
+      };
+
+      const inserted = await supabase
+        .from("workout_sessions")
+        .insert(row)
+        .select("id")
+        .single();
+
+      if (inserted.error) {
+        if (inserted.error.code === UNIQUE_VIOLATION) {
+          const existing = await supabase
+            .from("workout_sessions")
+            .select("id")
+            .eq("client_request_key", requestKey)
+            .maybeSingle();
+          if (existing.data) return { sessionId: existing.data.id, wasDuplicate: true };
+        }
+        throw inserted.error;
+      }
+
+      return { sessionId: inserted.data.id, wasDuplicate: false };
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
+    },
+  });
+}
+
 // --- Import review ----------------------------------------------------------
 
 /** The columns the review queue shows. Kept explicit so nothing is fetched blind. */

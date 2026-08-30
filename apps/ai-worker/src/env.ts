@@ -4,7 +4,7 @@ import { AI_LIMITS } from "@training/ai-contracts";
  * The Workers AI binding, described by the one method this Worker uses.
  *
  * Typed locally rather than imported from `@cloudflare/workers-types` so tests
- * can supply a two-line fake, and so the surface the Cloudflare providers depend
+ * can supply a two-line fake, and so the surface the Cloudflare provider depends
  * on stays visible and tiny.
  */
 export interface AiBinding {
@@ -25,18 +25,14 @@ export interface WorkerEnv {
   readonly AI?: AiBinding;
   readonly AI_PROVIDER?: string;
   readonly STT_MODEL?: string;
-  readonly WORKOUT_PARSER_MODEL?: string;
-  readonly PLANNER_MODEL?: string;
   readonly ALLOWED_ORIGINS?: string;
   readonly SUPABASE_URL?: string;
   readonly SUPABASE_JWKS_URL?: string;
   readonly SUPABASE_JWT_ISSUER?: string;
   /** Secret. Symmetric HS256 fallback only. */
   readonly SUPABASE_JWT_SECRET?: string;
-  readonly MAX_JSON_BODY_BYTES?: string;
   readonly MAX_AUDIO_BYTES?: string;
   readonly MAX_AUDIO_SECONDS?: string;
-  readonly MAX_TEXT_CHARS?: string;
   readonly RATE_LIMIT_PER_MINUTE?: string;
   readonly LOG_LEVEL?: string;
 }
@@ -47,14 +43,12 @@ export interface WorkerConfig {
   /** `mock` unless explicitly set, so tests and previews never call out. */
   readonly provider: ProviderName;
   /**
-   * Configured model IDs. Null when unset: the Cloudflare providers then refuse
-   * to run rather than falling back to a hard-coded ID, because a silently
-   * wrong model is worse than a clear configuration error (brief 7.4).
+   * The configured transcription model ID. Null when unset: the Cloudflare
+   * provider then refuses to run rather than falling back to a hard-coded ID,
+   * because a silently wrong model is worse than a clear configuration error.
    */
   readonly models: {
     readonly stt: string | null;
-    readonly workoutParser: string | null;
-    readonly planner: string | null;
   };
   readonly allowedOrigins: readonly string[];
   readonly supabaseUrl: string | null;
@@ -62,10 +56,8 @@ export interface WorkerConfig {
   readonly expectedIssuer: string | null;
   readonly jwtSecretConfigured: boolean;
   readonly limits: {
-    readonly maxJsonBodyBytes: number;
     readonly maxAudioBytes: number;
     readonly maxAudioSeconds: number;
-    readonly maxTextChars: number;
   };
   readonly rateLimitPerMinute: number;
   readonly logLevel: "debug" | "info";
@@ -100,8 +92,6 @@ export function resolveConfig(env: WorkerEnv): WorkerConfig {
     provider,
     models: {
       stt: trimmedOrNull(env.STT_MODEL),
-      workoutParser: trimmedOrNull(env.WORKOUT_PARSER_MODEL),
-      planner: trimmedOrNull(env.PLANNER_MODEL),
     },
     allowedOrigins: parseAllowedOrigins(env.ALLOWED_ORIGINS),
     supabaseUrl,
@@ -113,10 +103,8 @@ export function resolveConfig(env: WorkerEnv): WorkerConfig {
       (supabaseUrl === null ? null : `${supabaseUrl}/auth/v1`),
     jwtSecretConfigured: trimmedOrNull(env.SUPABASE_JWT_SECRET) !== null,
     limits: {
-      maxJsonBodyBytes: positiveInt(env.MAX_JSON_BODY_BYTES, AI_LIMITS.maxJsonBodyBytes),
       maxAudioBytes: positiveInt(env.MAX_AUDIO_BYTES, AI_LIMITS.maxAudioBytes),
       maxAudioSeconds: positiveInt(env.MAX_AUDIO_SECONDS, AI_LIMITS.maxAudioDurationSeconds),
-      maxTextChars: positiveInt(env.MAX_TEXT_CHARS, AI_LIMITS.maxTextChars),
     },
     rateLimitPerMinute: positiveInt(env.RATE_LIMIT_PER_MINUTE, 30),
     logLevel: trimmedOrNull(env.LOG_LEVEL) === "debug" ? "debug" : "info",

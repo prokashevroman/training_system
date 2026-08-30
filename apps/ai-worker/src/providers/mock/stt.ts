@@ -1,18 +1,17 @@
 import type { AudioInput, SpeechToTextProvider, TranscriptResult } from "@training/ai-contracts";
-import { buildMetadata } from "../../draft.js";
+import { buildMetadata } from "../metadata.js";
 
 /**
  * Offline transcription stand-in.
  *
- * Returns a fixed transcript that the mock parser can actually parse, so the
- * from-audio route can be exercised end to end with no network and no Cloudflare
- * account. It never inspects the audio bytes beyond their length, which is the
- * only thing it reports.
+ * Returns a fixed transcript so the transcription route can be exercised end
+ * to end with no network and no Cloudflare account. It never inspects the
+ * audio bytes beyond their length, which is the only thing it reports.
  */
 export const MOCK_STT_MODEL = "mock-stt-v1";
 export const MOCK_STT_PROMPT_VERSION = "mock-stt/1";
 
-/** Deliberately shaped to parse into one strength activity and one run. */
+/** Representative of what an athlete would actually say. */
 export const MOCK_TRANSCRIPT =
   "Back squat 3 sets of 5 at 100 kg. Then ran 5 km easy in 25 minutes. Felt strong.";
 

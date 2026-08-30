@@ -4,16 +4,14 @@ import { corsHeaders, evaluateCors, preflightResponse } from "./cors.js";
 import type { WorkerEnv } from "./env.js";
 import { resolveConfig } from "./env.js";
 import type { RequestContext } from "./handlers/context.js";
-import { handleFromAudio } from "./handlers/from-audio.js";
-import { handleFromText } from "./handlers/from-text.js";
-import { handlePlanDraft, handlePlanExplain } from "./handlers/plans.js";
+import { handleTranscribe } from "./handlers/transcribe.js";
 import { AiHttpError, errorResponse, jsonResponse } from "./http-error.js";
 import { createLogger } from "./log.js";
 import { selectProviders } from "./providers/index.js";
 import { enforceRateLimit } from "./rate-limit.js";
 
 /**
- * Request pipeline. Hand-rolled rather than a framework: four routes do not
+ * Request pipeline. Hand-rolled rather than a framework: one route does not
  * justify a dependency, and the order below is the security contract, so it is
  * worth having in one readable place.
  *
@@ -29,10 +27,7 @@ import { enforceRateLimit } from "./rate-limit.js";
 type Handler = (context: RequestContext) => Promise<unknown>;
 
 const ROUTES: ReadonlyArray<{ method: string; path: string; handler: Handler }> = [
-  { method: "POST", path: "/v1/workout-drafts/from-text", handler: handleFromText },
-  { method: "POST", path: "/v1/workout-drafts/from-audio", handler: handleFromAudio },
-  { method: "POST", path: "/v1/plans/draft", handler: handlePlanDraft },
-  { method: "POST", path: "/v1/plans/explain", handler: handlePlanExplain },
+  { method: "POST", path: "/v1/transcriptions", handler: handleTranscribe },
 ];
 
 /** Accepts a caller-supplied id only if it is short and safe to log verbatim. */
