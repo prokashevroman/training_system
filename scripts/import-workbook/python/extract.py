@@ -17,8 +17,16 @@ imports it. That is deliberate: the profile report claims 170 non-empty cells
 and this script writes 170 records, and those two numbers are only a meaningful
 gate if both come from the same reader.
 
-Exits non-zero -- writing nothing -- if the cell count is not the expected 170
+Exits non-zero -- writing nothing -- if the cell count is not the expected 197
 or if any of the 53 week labels disagrees with the anchor computation.
+
+The training grid does not have to start at row 1: anything ABOVE the "Week 01"
+label row (minus its header) is treated as a preamble and skipped. The 2026-08
+revision of the workbook prepended a monthly plan-template block, shifting the
+whole grid down by 23 rows; rows are therefore re-based so that Week 01 is
+always row 2. That keeps every ``import:{sheet}:{row}:{col}`` idempotency key
+identical across workbook revisions -- the same physical cell always produces
+the same key, however far the grid migrates down the sheet.
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -35,7 +44,10 @@ from openpyxl import load_workbook
 
 import workbook_dates as wd
 
-EXPECTED_CELL_COUNT = 170
+EXPECTED_CELL_COUNT = 197
+
+#: Column A of the first data row. Anchors the grid when a preamble precedes it.
+_WEEK_01_RE = re.compile(r"^\s*Week\s+0*1(?!\d)", re.IGNORECASE)
 DEFAULT_OUTPUT_RELPATH = "data/staging/cells.jsonl"
 SOURCE_DIR_RELPATH = "data/source"
 
@@ -100,11 +112,13 @@ class Workbook:
     max_row: int
     max_column: int
     header: tuple[Any, ...]
-    #: row number -> column A text, for every row that has one.
+    #: Physical rows skipped above the grid (0 when the grid starts at row 1).
+    grid_offset: int
+    #: RE-BASED row number -> column A text, for every row that has one.
     week_labels: dict[int, str]
-    #: Every non-empty day cell (columns B..H), ordered by (row, col).
+    #: Every non-empty day cell (columns B..H), ordered by re-based (row, col).
     day_cells: tuple[DayCell, ...]
-    #: Rows in the day-column range that hold no data at all.
+    #: Re-based rows in the day-column range that hold no data at all.
     empty_rows: tuple[int, ...]
 
 
@@ -130,13 +144,31 @@ def read_workbook(path: Path) -> Workbook:
             values_only=True,
         )
     )
-    header = tuple(rows[0]) if rows else ()
+
+    # Anchor the grid on the "Week 01" label. The row above it is the header;
+    # anything above THAT (plan templates, summaries) is not training history
+    # and is skipped entirely.
+    week01_index = next(
+        (
+            i
+            for i, row in enumerate(rows, start=1)
+            if row and isinstance(row[0], str) and _WEEK_01_RE.match(row[0])
+        ),
+        None,
+    )
+    if week01_index is None:
+        raise SystemExit(
+            f'No "Week 01" label found in column A of {path.name}; '
+            "the grid anchor is gone, so no date can be trusted."
+        )
+    grid_offset = week01_index - wd.FIRST_DATA_ROW
+    header = tuple(rows[grid_offset]) if 0 <= grid_offset < len(rows) else ()
 
     week_labels: dict[int, str] = {}
     day_cells: list[DayCell] = []
     empty_rows: list[int] = []
 
-    for row_number, row in enumerate(rows[1:], start=2):
+    for row_number, row in enumerate(rows[week01_index - 1 :], start=wd.FIRST_DATA_ROW):
         label = row[0] if row else None
         if not _is_empty(label):
             week_labels[row_number] = str(label)
@@ -163,6 +195,7 @@ def read_workbook(path: Path) -> Workbook:
         max_row=ws.max_row,
         max_column=ws.max_column,
         header=header,
+        grid_offset=grid_offset,
         week_labels=week_labels,
         day_cells=tuple(day_cells),
         empty_rows=tuple(empty_rows),
@@ -277,6 +310,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"workbook       {_rel(workbook_path, root)}")
     print(f"sha256         {book.sha256}")
     print(f"sheet          {book.sheet_name} ({book.dimensions})")
+    if book.grid_offset:
+        print(f"grid offset    {book.grid_offset} preamble rows skipped; rows re-based to Week 01 = row 2")
     print(f"week labels    {label_count}/{label_count} match the anchor computation")
     print(f"records        {len(records)}")
     print(f"rows with data {rows_with_data[0]}..{rows_with_data[-1]} ({len(rows_with_data)} weeks)")

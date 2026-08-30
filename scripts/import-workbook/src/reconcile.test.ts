@@ -17,12 +17,12 @@ suite("reconciliation over the whole corpus", () => {
   const report = reconcile(cells);
 
   // Acceptance criterion 4.
-  it("reads exactly 170 staged cells", () => {
-    expect(report.cellsDiscovered).toBe(170);
+  it("reads exactly 197 staged cells", () => {
+    expect(report.cellsDiscovered).toBe(197);
   });
 
-  it("sees the 550 non-empty source lines the profile counted", () => {
-    expect(report.sourceLines).toBe(550);
+  it("sees the 667 non-empty source lines the profile counted", () => {
+    expect(report.sourceLines).toBe(667);
   });
 
   /**
@@ -80,14 +80,14 @@ suite("reconciliation over the whole corpus", () => {
   // Acceptance criterion 5 / brief: empty future weeks create nothing.
   it("creates no session from the empty future weeks", () => {
     expect(report.emptyFutureWeekRows.sessionsCreated).toBe(0);
-    expect(report.cells.every((c) => c.weekNumber <= 31)).toBe(true);
+    expect(report.cells.every((c) => c.weekNumber <= 35)).toBe(true);
   });
 
   it("dates every session inside the populated range", () => {
     for (const cell of report.cells) {
       for (const s of cell.result.sessions) {
         expect(s.localDate >= "2025-12-29").toBe(true);
-        expect(s.localDate <= "2026-08-01").toBe(true);
+        expect(s.localDate <= "2026-08-30").toBe(true);
       }
     }
   });
@@ -129,7 +129,7 @@ suite("report rendering", () => {
     ]) {
       expect(md, `report is missing "${needle}"`).toContain(needle);
     }
-    expect(md).toContain("| Source day cells discovered | 170 |");
+    expect(md).toContain("| Source day cells discovered | 197 |");
   });
 
   it("names the workbook checksum the report refers to", () => {

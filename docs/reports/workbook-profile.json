@@ -1,10 +1,10 @@
 {
   "source": {
-    "file": "Hoja de cálculo sin título (2).xlsx",
-    "sha256": "5316b6b7b27045496b77c26fe04bdf5ae13feeffcf0699bf2e1353c7b795277d",
+    "file": "Hoja de cálculo sin título (3).xlsx",
+    "sha256": "b28c8bc6976a821fb9a589574eb047265b266a21330df725e634f8af97d6e6ab",
     "sheet": "Training programm 2026",
-    "dimensions": "A1:H54",
-    "max_row": 54,
+    "dimensions": "A1:H77",
+    "max_row": 77,
     "max_column": 8,
     "header_row": [
       "Columna 1",
@@ -23,11 +23,11 @@
     "week_number_from_row": "row - 1",
     "day_index_from_col": "col - 1",
     "first_date": "2025-12-29",
-    "last_date": "2026-08-01"
+    "last_date": "2026-08-30"
   },
   "structure": {
-    "non_empty_day_cells": 170,
-    "weeks_with_data": 31,
+    "non_empty_day_cells": 197,
+    "weeks_with_data": 35,
     "rows_with_data": [
       2,
       3,
@@ -59,14 +59,14 @@
       29,
       30,
       31,
-      32
-    ],
-    "rows_with_data_compact": "2-32",
-    "empty_rows": [
+      32,
       33,
       34,
       35,
-      36,
+      36
+    ],
+    "rows_with_data_compact": "2-36",
+    "empty_rows": [
       37,
       38,
       39,
@@ -86,7 +86,7 @@
       53,
       54
     ],
-    "empty_rows_compact": "33-54",
+    "empty_rows_compact": "37-54",
     "week_labels": 53,
     "label_rows_compact": "2-54",
     "cells_per_row": {
@@ -120,37 +120,41 @@
       "29": 6,
       "30": 7,
       "31": 7,
-      "32": 6
+      "32": 7,
+      "33": 7,
+      "34": 7,
+      "35": 5,
+      "36": 7
     },
     "cells_per_day_index": {
-      "1": 31,
-      "2": 31,
-      "3": 31,
-      "4": 29,
-      "5": 26,
-      "6": 17,
-      "7": 5
+      "1": 35,
+      "2": 35,
+      "3": 35,
+      "4": 33,
+      "5": 30,
+      "6": 20,
+      "7": 9
     },
     "cells_per_weekday": {
-      "Monday": 31,
-      "Tuesday": 31,
-      "Wednesday": 31,
-      "Thursday": 29,
-      "Friday": 26,
-      "Saturday": 17,
-      "Sunday": 5
+      "Monday": 35,
+      "Tuesday": 35,
+      "Wednesday": 35,
+      "Thursday": 33,
+      "Friday": 30,
+      "Saturday": 20,
+      "Sunday": 9
     }
   },
   "corpus": {
-    "total_characters": 15518,
-    "total_lines": 653,
-    "non_empty_lines": 550,
-    "blank_line_blocks": 269,
+    "total_characters": 19252,
+    "total_lines": 796,
+    "non_empty_lines": 667,
+    "blank_line_blocks": 322,
     "cell_length": {
       "min": 16,
-      "median": 67.0,
-      "mean": 91.3,
-      "p90": 176,
+      "median": 70,
+      "mean": 97.7,
+      "p90": 213,
       "max": 387
     },
     "length_distribution": [
@@ -158,57 +162,57 @@
         "label": "0-25",
         "min": 0,
         "max": 25,
-        "cells": 18,
-        "share": 0.1059
+        "cells": 22,
+        "share": 0.1117
       },
       {
         "label": "26-50",
         "min": 26,
         "max": 50,
-        "cells": 40,
-        "share": 0.2353
+        "cells": 41,
+        "share": 0.2081
       },
       {
         "label": "51-75",
         "min": 51,
         "max": 75,
-        "cells": 39,
-        "share": 0.2294
+        "cells": 43,
+        "share": 0.2183
       },
       {
         "label": "76-100",
         "min": 76,
         "max": 100,
-        "cells": 29,
-        "share": 0.1706
+        "cells": 32,
+        "share": 0.1624
       },
       {
         "label": "101-150",
         "min": 101,
         "max": 150,
-        "cells": 22,
-        "share": 0.1294
+        "cells": 28,
+        "share": 0.1421
       },
       {
         "label": "151-200",
         "min": 151,
         "max": 200,
-        "cells": 6,
-        "share": 0.0353
+        "cells": 9,
+        "share": 0.0457
       },
       {
         "label": "201-300",
         "min": 201,
         "max": 300,
-        "cells": 7,
-        "share": 0.0412
+        "cells": 10,
+        "share": 0.0508
       },
       {
         "label": "301+",
         "min": 301,
         "max": null,
-        "cells": 9,
-        "share": 0.0529
+        "cells": 12,
+        "share": 0.0609
       }
     ]
   },

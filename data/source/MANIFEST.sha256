@@ -1,12 +1,1 @@
-# Source workbook manifest.
-#
-# The workbook itself is personal health data and is NOT committed (see
-# .gitignore). This manifest pins exactly which file every generated report and
-# import batch refers to. Verify with:
-#
-#   shasum -a 256 -c data/source/MANIFEST.sha256
-#
-# If this check fails, the workbook has changed: re-run `pnpm import:inspect`
-# and `pnpm import:extract` before trusting any report in docs/reports/.
-
-5316b6b7b27045496b77c26fe04bdf5ae13feeffcf0699bf2e1353c7b795277d  Hoja de cálculo sin título (2).xlsx
+b28c8bc6976a821fb9a589574eb047265b266a21330df725e634f8af97d6e6ab  Hoja de cálculo sin título (3).xlsx

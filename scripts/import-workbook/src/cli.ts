@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -132,6 +132,16 @@ function loadImportEnv(): { url: string; key: string; userId: string } {
   return { url, key, userId };
 }
 
+/** The workbook actually in data/source — the same one the extractor read. */
+function sourceWorkbookName(): string {
+  const dir = `${ROOT}data/source`;
+  const books = readdirSync(dir).filter((n) => n.endsWith(".xlsx") && !n.startsWith("~$"));
+  if (books.length !== 1) {
+    throw new Error(`Expected exactly one .xlsx in ${dir}, found ${books.length}.`);
+  }
+  return books[0]!;
+}
+
 function write(path: string, contents: string): void {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, contents, "utf8");
@@ -224,7 +234,7 @@ async function main(): Promise<number> {
         supabaseUrl: env.url,
         serviceRoleKey: env.key,
         userId: env.userId,
-        fileName: "Hoja de cálculo sin título (2).xlsx",
+        fileName: sourceWorkbookName(),
         importerVersion: IMPORTER_VERSION,
         parserVersion: PARSER_VERSION,
         dryRun: false,

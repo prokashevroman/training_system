@@ -34,8 +34,9 @@ SHEET_NAME = "Training programm 2026"
 WEEK_ANCHOR_ISO = "2025-12-29"
 
 FIRST_DATA_ROW = 2
-LAST_DATA_ROW = 32
-#: Row 54 is Week 53; rows 33..54 are empty future weeks.
+#: Last populated week row as of the 2026-08-30 workbook (Week 35).
+LAST_DATA_ROW = 36
+#: Row 54 is Week 53; rows 37..54 are empty future weeks.
 LAST_LABEL_ROW = 54
 #: Column B..H are Day 1..Day 7, despite the header reading ``Column 8``.
 FIRST_DAY_COL = 2
