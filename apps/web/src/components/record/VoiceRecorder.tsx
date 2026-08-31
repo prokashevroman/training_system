@@ -16,9 +16,10 @@ interface Props {
   /** Called with the transcript (or typed text) to review and save. */
   onTranscript: (text: string) => void;
   onManual: () => void;
+  onPaste: () => void;
 }
 
-export function VoiceRecorder({ onTranscript, onManual }: Props) {
+export function VoiceRecorder({ onTranscript, onManual, onPaste }: Props) {
   const recorder = useRecorder();
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState<string | null>(null);
@@ -50,6 +51,7 @@ export function VoiceRecorder({ onTranscript, onManual }: Props) {
     return (
       <Disabled
         onManual={onManual}
+        onPaste={onPaste}
         message="Voice entry needs VITE_AI_WORKER_URL. Until the Cloudflare Worker is deployed it stays switched off rather than recording something nothing can read back."
       />
     );
@@ -161,7 +163,10 @@ export function VoiceRecorder({ onTranscript, onManual }: Props) {
         </button>
       </details>
 
-      <div className="text-center">
+      <div className="flex flex-col items-center gap-2 text-center">
+        <button type="button" onClick={onPaste} className="text-sm text-slate-300 underline">
+          Paste spreadsheet lines
+        </button>
         <button type="button" onClick={onManual} className="text-sm text-slate-400 underline">
           Enter manually instead
         </button>
@@ -170,7 +175,15 @@ export function VoiceRecorder({ onTranscript, onManual }: Props) {
   );
 }
 
-function Disabled({ message, onManual }: { message: string; onManual: () => void }) {
+function Disabled({
+  message,
+  onManual,
+  onPaste,
+}: {
+  message: string;
+  onManual: () => void;
+  onPaste: () => void;
+}) {
   return (
     <div className="space-y-8">
       <div className="flex flex-col items-center gap-4 py-6">
@@ -187,12 +200,15 @@ function Disabled({ message, onManual }: { message: string; onManual: () => void
         </button>
         <p className="max-w-xs text-center text-sm text-slate-400">{message}</p>
       </div>
-      <div className="text-center">
+      <div className="flex flex-col items-center gap-3">
         <button
           type="button"
-          onClick={onManual}
+          onClick={onPaste}
           className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white"
         >
+          Paste spreadsheet lines
+        </button>
+        <button type="button" onClick={onManual} className="text-sm text-slate-400 underline">
           Enter manually
         </button>
       </div>

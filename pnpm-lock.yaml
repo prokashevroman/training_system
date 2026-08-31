@@ -87,6 +87,9 @@ importers:
       '@training/domain':
         specifier: workspace:*
         version: link:../../packages/domain
+      '@training/import-workbook':
+        specifier: workspace:*
+        version: link:../../scripts/import-workbook
       clsx:
         specifier: ^2.1.1
         version: 2.1.1

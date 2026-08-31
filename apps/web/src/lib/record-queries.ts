@@ -1,16 +1,17 @@
-import type { ImportEntry, TablesInsert } from "@training/db-types";
+import type { ImportEntry, Json, TablesInsert } from "@training/db-types";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { z } from "zod";
 /**
  * The domain modules are imported by path rather than through the
- * `@training/domain` barrel on purpose: the barrel also re-exports
- * `seed-sql.ts` and `sql-enums.ts`, which import `node:url` and call
- * `fileURLToPath` at module scope. Vite replaces node builtins in the browser
- * with a proxy that throws on first property access, so importing the barrel
- * blanks the page in dev — the production build only survives it because
- * tree-shaking drops the SQL generators, which hides the problem. Reaching for
- * the four leaf modules keeps every schema and the one conversion function
- * shared; nothing is reimplemented here.
+ * `@training/domain` barrel to keep this module's graph to the four leaves it
+ * actually needs. Every schema and the one conversion function are shared;
+ * nothing is reimplemented here.
+ *
+ * The barrel itself is browser-safe — `sql-enums.ts` and `seed-sql.ts` call
+ * `fileURLToPath` at module scope and are deliberately excluded from it, which
+ * `domain/src/index.test.ts` asserts. (An earlier version of this comment said
+ * the opposite; the barrel was fixed, and `lib/paste-queries.ts` now reaches it
+ * transitively through the parser in both dev and the production build.)
  */
 import {
   IntensityEnum,
@@ -314,12 +315,49 @@ export interface SessionInsertBundle {
 }
 
 /**
+ * Draft fields this bundle cannot write, because they live in tables it does
+ * not insert into: `cardio_intervals`, `circuit_results` + `circuit_movements`,
+ * `benchmark_results` + `benchmark_splits`, and `session_tags`.
+ *
+ * The manual form cannot produce any of them, but the workbook parser behind
+ * paste entry can. Callers must check this *before* saving — a draft that
+ * silently loses its benchmark splits is exactly the kind of quiet data loss
+ * the import pipeline is built to prevent.
+ */
+export function unsupportedDraftParts(draft: SessionDraft): string[] {
+  let intervals = 0;
+  let circuits = 0;
+  let benchmarks = 0;
+  for (const activity of draft.activities) {
+    intervals += activity.cardioIntervals.length;
+    if (activity.circuit !== null) circuits += 1;
+    if (activity.benchmark !== null) benchmarks += 1;
+  }
+
+  const parts: string[] = [];
+  if (intervals > 0)
+    parts.push(`${intervals} cardio ${intervals === 1 ? "interval" : "intervals"}`);
+  if (circuits > 0) parts.push(`${circuits} ${circuits === 1 ? "circuit" : "circuits"}`);
+  if (benchmarks > 0) {
+    parts.push(`${benchmarks} benchmark ${benchmarks === 1 ? "result" : "results"}`);
+  }
+  if (draft.tags.length > 0) {
+    parts.push(`${draft.tags.length} ${draft.tags.length === 1 ? "tag" : "tags"}`);
+  }
+  return parts;
+}
+
+/**
  * Builds the three insert payloads.
  *
  * Row ids are generated here rather than read back from Postgres so children
  * can reference their parents without a round trip, and `user_id` is stamped on
  * every row: the composite foreign keys are `(parent_id, user_id)`, so a child
  * whose `user_id` differs from its parent's is rejected outright.
+ *
+ * Every column of these three tables is written. Anything a draft carries that
+ * these three tables have no room for is reported by {@link unsupportedDraftParts}
+ * rather than dropped on the floor here.
  */
 export function buildInsertBundle(
   draft: SessionDraft,
@@ -333,10 +371,12 @@ export function buildInsertBundle(
     id: sessionId,
     user_id: userId,
     local_date: draft.localDate,
+    started_at: draft.startedAt,
     title: draft.title,
     source: draft.source,
     status: draft.status,
     raw_text: draft.rawText,
+    transcript: draft.transcript,
     notes: draft.notes,
     duration_seconds: draft.durationSeconds,
     session_rpe: draft.sessionRpe,
@@ -354,13 +394,23 @@ export function buildInsertBundle(
       session_id: sessionId,
       sequence: activity.sequence,
       modality: activity.modality,
+      subtype: activity.subtype,
       objective: activity.objective,
       intensity: activity.intensity,
       duration_seconds: activity.durationSeconds,
       distance_km: activity.distanceKm,
       calories: activity.calories,
       avg_heart_rate_bpm: activity.avgHeartRateBpm,
+      max_heart_rate_bpm: activity.maxHeartRateBpm,
       cadence_spm: activity.cadenceSpm,
+      elevation_gain_m: activity.elevationGainM,
+      avg_power_watts: activity.avgPowerWatts,
+      external_load_kg: activity.externalLoadKg,
+      // `details` is `Record<string, unknown>` in the domain schema and `Json`
+      // in the generated row types. The parser only ever puts JSON scalars in
+      // it (`floors`, `steps`), and it is serialized as JSON on the way out
+      // regardless, so this narrows rather than reinterprets.
+      details: activity.details as Json,
       notes: activity.notes,
       original_text: activity.originalText,
     });
@@ -372,6 +422,7 @@ export function buildInsertBundle(
         set_index: set.setIndex,
         exercise_id: set.exercise.slug ? (exerciseIdBySlug.get(set.exercise.slug) ?? null) : null,
         exercise_raw_text: set.exercise.rawText,
+        apparatus: set.exercise.apparatus,
         exercise_confidence: set.exercise.confidence,
         set_type: set.setType,
         reps: set.reps,
@@ -379,6 +430,14 @@ export function buildInsertBundle(
         load_unit: set.loadUnit,
         load_scope: set.loadScope,
         load_kg: set.loadKg,
+        side: set.side,
+        rir: set.rir,
+        rpe: set.rpe,
+        tempo: set.tempo,
+        rest_seconds: set.restSeconds,
+        hold_seconds: set.holdSeconds,
+        completed: set.completed,
+        notes: set.notes,
         original_text: set.originalText,
       });
     }
@@ -412,10 +471,104 @@ export interface SaveManualSessionResult {
   wasDuplicate: boolean;
 }
 
+/**
+ * Writes one session tree: session row, then activities, then sets.
+ *
+ * Shared by manual entry and pasted-text entry so the duplicate handling and
+ * the rollback exist once. PostgREST gives one transaction per request, not per
+ * bundle, so a failure part-way through is undone here by deleting the session
+ * — children cascade from it.
+ */
+export async function insertSessionBundle(
+  bundle: SessionInsertBundle,
+  requestKey: string,
+): Promise<SaveManualSessionResult> {
+  const inserted = await supabase
+    .from("workout_sessions")
+    .insert(bundle.session)
+    .select("id")
+    .single();
+
+  if (inserted.error) {
+    if (inserted.error.code === UNIQUE_VIOLATION) {
+      // The key was already spent, so the session exists. Report it
+      // instead of failing: the second tap did what the first one did.
+      const existing = await supabase
+        .from("workout_sessions")
+        .select("id")
+        .eq("client_request_key", requestKey)
+        .maybeSingle();
+      if (existing.data) return { sessionId: existing.data.id, wasDuplicate: true };
+    }
+    throw inserted.error;
+  }
+
+  const sessionId = inserted.data.id;
+  try {
+    const activities = await supabase.from("activities").insert(bundle.activities);
+    if (activities.error) throw activities.error;
+    if (bundle.strengthSets.length > 0) {
+      const sets = await supabase.from("strength_sets").insert(bundle.strengthSets);
+      if (sets.error) throw sets.error;
+    }
+  } catch (error) {
+    // Roll back so no half-written tree survives. Activities and sets
+    // cascade from the session, so one delete is enough; if the delete
+    // itself fails the original error still wins, because that is the
+    // one that explains what went wrong.
+    await supabase.from("workout_sessions").delete().eq("id", sessionId);
+    throw error;
+  }
+
+  return { sessionId, wasDuplicate: false };
+}
+
+export interface ExerciseLibraryLookup {
+  /** `slug -> exercises.id`, the lookup `buildInsertBundle` needs. */
+  idBySlug: ReadonlyMap<string, string>;
+  /** False while the library query is loading or has failed. */
+  isReady: boolean;
+}
+
+export function useExerciseLibraryLookup(): ExerciseLibraryLookup {
+  const exercises = useExerciseLibrary();
+  return {
+    idBySlug: new Map((exercises.data ?? []).map((exercise) => [exercise.slug, exercise.id])),
+    isReady: exercises.isSuccess,
+  };
+}
+
+/**
+ * Refuses to save a draft whose canonical exercise links would be silently
+ * dropped.
+ *
+ * The parser resolves slugs offline, from the library compiled into the bundle;
+ * turning a slug into an `exercises.id` needs the library *row*, which is a
+ * query. If that query has not resolved, every set arrives with
+ * `exercise_id: null` — a permanent, invisible loss of the canonical link that
+ * depends only on network timing. Free text is unaffected: a set with no slug
+ * has no link to lose, which is why this checks the draft rather than blocking
+ * every save.
+ */
+export function assertExerciseLinksResolvable(
+  draft: SessionDraft,
+  lookup: ExerciseLibraryLookup,
+): void {
+  if (lookup.isReady) return;
+  const wouldLoseLink = draft.activities.some((activity) =>
+    activity.strengthSets.some((set) => set.exercise.slug !== null),
+  );
+  if (wouldLoseLink) {
+    throw new Error(
+      "The exercise library has not finished loading, so these exercises cannot be linked yet. Wait a moment and try again.",
+    );
+  }
+}
+
 export function useSaveManualSession() {
   const queryClient = useQueryClient();
   const { userId } = useAuth();
-  const exercises = useExerciseLibrary();
+  const lookup = useExerciseLibraryLookup();
 
   return useMutation<
     SaveManualSessionResult,
@@ -424,50 +577,10 @@ export function useSaveManualSession() {
   >({
     mutationFn: async ({ form, requestKey }) => {
       if (!userId) throw new Error("Not signed in.");
-      const exerciseIdBySlug = new Map(
-        (exercises.data ?? []).map((exercise) => [exercise.slug, exercise.id]),
-      );
       const draft = toSessionDraft(form, requestKey);
-      const bundle = buildInsertBundle(draft, userId, exerciseIdBySlug);
-
-      const inserted = await supabase
-        .from("workout_sessions")
-        .insert(bundle.session)
-        .select("id")
-        .single();
-
-      if (inserted.error) {
-        if (inserted.error.code === UNIQUE_VIOLATION) {
-          // The key was already spent, so the session exists. Report it
-          // instead of failing: the second tap did what the first one did.
-          const existing = await supabase
-            .from("workout_sessions")
-            .select("id")
-            .eq("client_request_key", requestKey)
-            .maybeSingle();
-          if (existing.data) return { sessionId: existing.data.id, wasDuplicate: true };
-        }
-        throw inserted.error;
-      }
-
-      const sessionId = inserted.data.id;
-      try {
-        const activities = await supabase.from("activities").insert(bundle.activities);
-        if (activities.error) throw activities.error;
-        if (bundle.strengthSets.length > 0) {
-          const sets = await supabase.from("strength_sets").insert(bundle.strengthSets);
-          if (sets.error) throw sets.error;
-        }
-      } catch (error) {
-        // Roll back so no half-written tree survives. Activities and sets
-        // cascade from the session, so one delete is enough; if the delete
-        // itself fails the original error still wins, because that is the
-        // one that explains what went wrong.
-        await supabase.from("workout_sessions").delete().eq("id", sessionId);
-        throw error;
-      }
-
-      return { sessionId, wasDuplicate: false };
+      assertExerciseLinksResolvable(draft, lookup);
+      const bundle = buildInsertBundle(draft, userId, lookup.idBySlug);
+      return insertSessionBundle(bundle, requestKey);
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
@@ -520,11 +633,7 @@ export function useSaveVoiceSession() {
         client_request_key: requestKey,
       };
 
-      const inserted = await supabase
-        .from("workout_sessions")
-        .insert(row)
-        .select("id")
-        .single();
+      const inserted = await supabase.from("workout_sessions").insert(row).select("id").single();
 
       if (inserted.error) {
         if (inserted.error.code === UNIQUE_VIOLATION) {

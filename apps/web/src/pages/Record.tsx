@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { ManualEntryForm } from "../components/record/ManualEntryForm.js";
+import { PasteEntryForm } from "../components/record/PasteEntryForm.js";
 import { TranscriptConfirm } from "../components/record/TranscriptConfirm.js";
 import { VoiceRecorder } from "../components/record/VoiceRecorder.js";
 
@@ -16,7 +17,7 @@ import { VoiceRecorder } from "../components/record/VoiceRecorder.js";
  * model ever guesses structure out of it.
  */
 export function Record() {
-  const [mode, setMode] = useState<"capture" | "manual">("capture");
+  const [mode, setMode] = useState<"capture" | "manual" | "paste">("capture");
   const [transcript, setTranscript] = useState<string | null>(null);
 
   if (transcript !== null) {
@@ -26,6 +27,22 @@ export function Record() {
         onDone={() => setTranscript(null)}
         onDiscard={() => setTranscript(null)}
       />
+    );
+  }
+
+  if (mode === "paste") {
+    return (
+      <div className="space-y-4">
+        <header>
+          <h1 className="text-xl font-semibold">Paste a session</h1>
+          <p className="text-sm text-slate-400">
+            Write it the way you write it in the spreadsheet. The same parser that imported the
+            workbook maps it onto exercises, sets and loads — and tells you anything it could not
+            read rather than guessing.
+          </p>
+        </header>
+        <PasteEntryForm onCancel={() => setMode("capture")} />
+      </div>
     );
   }
 
@@ -50,7 +67,11 @@ export function Record() {
         <h1 className="text-xl font-semibold">Record</h1>
         <p className="text-sm text-slate-400">Capture a session you have just finished.</p>
       </header>
-      <VoiceRecorder onTranscript={setTranscript} onManual={() => setMode("manual")} />
+      <VoiceRecorder
+        onTranscript={setTranscript}
+        onManual={() => setMode("manual")}
+        onPaste={() => setMode("paste")}
+      />
     </div>
   );
 }
