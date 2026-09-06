@@ -182,56 +182,62 @@ describe("parsePastedText", () => {
   });
 });
 
-describe("shapes the insert path cannot store", () => {
-  it("reports a benchmark rather than saving a session without its splits", () => {
-    const result = parse("Murph preperation (vest 9 kg):\nrun 1600 m\nCindy 5 rounds\nrun 1600 m");
-    expect(result.sessions.length).toBeGreaterThan(0);
-    expect(result.sessions[0]!.draft.activities[0]!.benchmark?.splits).toHaveLength(2);
-    expect(result.unsupported).toEqual([{ sessionIndex: 0, parts: ["1 benchmark result"] }]);
+describe("every parsed shape reaches a table", () => {
+  const USER = "11111111-2222-4333-8444-555555555555";
+
+  function bundleOf(text: string) {
+    const result = parse(text);
+    expect(result.unsupported).toEqual([]);
+    return buildInsertBundle(applyPasteEdits(result.sessions[0]!, new Map()), USER, {
+      exerciseIdBySlug: new Map(),
+      benchmarkIdBySlug: new Map([["cindy", "bm-cindy-id"]]),
+    });
+  }
+
+  it("saves interval training as interval rows — the Norwegian VO2 max case", () => {
+    // The exact entry that was once refused: pace-list intervals plus a note.
+    const bundle = bundleOf(
+      "Norwegian VO2 max running training:\nFast intervals pace: 4:09 - 3:58 - 3:55 - 4:04\nRunning straight, not in circles, purple shoes",
+    );
+    expect(bundle.cardioIntervals).toHaveLength(4);
+    expect(bundle.cardioIntervals.map((row) => row.pace_seconds_per_km)).toEqual([
+      249, 238, 235, 244,
+    ]);
+    expect(bundle.cardioIntervals.map((row) => row.interval_index)).toEqual([1, 2, 3, 4]);
+    const activityId = bundle.activities[0]!.id;
+    for (const row of bundle.cardioIntervals) {
+      expect(row.activity_id).toBe(activityId);
+      expect(row.user_id).toBe(USER);
+    }
   });
 
-  it("reports a circuit and its movements the same way", () => {
-    const result = parse("5 rounds: 10 push ups / 15 air squats / 20 sit ups");
-    expect(result.sessions).toHaveLength(1);
-    // The parser really does build the circuit — three movements of it.
-    expect(result.sessions[0]!.draft.activities[0]!.circuit?.movements).toHaveLength(3);
-    expect(result.unsupported).toEqual([{ sessionIndex: 0, parts: ["1 circuit"] }]);
+  it("saves a benchmark with its splits and the definition link", () => {
+    const bundle = bundleOf(
+      "Murph preperation (vest 9 kg):\nrun 1600 m\nCindy 5 rounds\nrun 1600 m",
+    );
+    expect(bundle.benchmarkResults).toHaveLength(1);
+    expect(bundle.benchmarkSplits).toHaveLength(2);
+    expect(bundle.benchmarkSplits[0]!.benchmark_result_id).toBe(bundle.benchmarkResults[0]!.id);
   });
 
-  it("says nothing is unsupported for plain lifting", () => {
-    expect(parse().unsupported).toEqual([]);
+  it("saves a circuit with its movements", () => {
+    const bundle = bundleOf("5 rounds: 10 push ups / 15 air squats / 20 sit ups");
+    expect(bundle.circuitResults).toHaveLength(1);
+    expect(bundle.circuitMovements).toHaveLength(3);
+    expect(bundle.circuitResults[0]!.rounds_prescribed).toBe(5);
+    expect(bundle.circuitMovements[0]!.circuit_result_id).toBe(bundle.circuitResults[0]!.id);
   });
 
   it("lets a commute through: subtype is a column, not a child table", () => {
-    const result = parse("Bike to & from work");
-    expect(result.unsupported).toEqual([]);
-    const bundle = buildInsertBundle(
-      applyPasteEdits(result.sessions[0]!, new Map()),
-      "11111111-2222-4333-8444-555555555555",
-      new Map(),
-    );
+    const bundle = bundleOf("Bike to & from work");
     expect(bundle.activities[0]!.subtype).toBe("commute");
   });
 });
 
 describe("unsupportedDraftParts", () => {
-  it("counts each kind of child the three-table insert has no room for", () => {
+  it("reports only tags, the one draft field still without a table", () => {
     const base = parse().sessions[0]!.draft;
-    const activity = base.activities[0]!;
-
     expect(unsupportedDraftParts(base)).toEqual([]);
-    expect(
-      unsupportedDraftParts({
-        ...base,
-        activities: [{ ...activity, cardioIntervals: [{} as never, {} as never] }],
-      }),
-    ).toEqual(["2 cardio intervals"]);
-    expect(
-      unsupportedDraftParts({ ...base, activities: [{ ...activity, circuit: {} as never }] }),
-    ).toEqual(["1 circuit"]);
-    expect(
-      unsupportedDraftParts({ ...base, activities: [{ ...activity, benchmark: {} as never }] }),
-    ).toEqual(["1 benchmark result"]);
     expect(unsupportedDraftParts({ ...base, tags: ["legs"] })).toEqual(["1 tag"]);
   });
 });
@@ -364,7 +370,9 @@ describe("buildInsertBundle over a pasted session", () => {
 
   it("produces one session, one activity and sixteen set rows", () => {
     const draft = applyPasteEdits(parse().sessions[0]!, new Map());
-    const bundle = buildInsertBundle(draft, USER, new Map([["seated-cable-row", "ex-row-id"]]));
+    const bundle = buildInsertBundle(draft, USER, {
+      exerciseIdBySlug: new Map([["seated-cable-row", "ex-row-id"]]),
+    });
 
     expect(bundle.activities).toHaveLength(1);
     expect(bundle.strengthSets).toHaveLength(16);
@@ -374,7 +382,9 @@ describe("buildInsertBundle over a pasted session", () => {
 
   it("links a known slug and leaves an unknown one null with its text kept", () => {
     const draft = applyPasteEdits(parse().sessions[0]!, new Map());
-    const bundle = buildInsertBundle(draft, USER, new Map([["seated-cable-row", "ex-row-id"]]));
+    const bundle = buildInsertBundle(draft, USER, {
+      exerciseIdBySlug: new Map([["seated-cable-row", "ex-row-id"]]),
+    });
 
     const row = bundle.strengthSets.find((s) => s.exercise_raw_text === "Seated cable row");
     expect(row!.exercise_id).toBe("ex-row-id");
@@ -389,7 +399,7 @@ describe("buildInsertBundle over a pasted session", () => {
 
   it("stamps the same user_id on every child row", () => {
     const draft = applyPasteEdits(parse().sessions[0]!, new Map());
-    const bundle = buildInsertBundle(draft, USER, new Map());
+    const bundle = buildInsertBundle(draft, USER, { exerciseIdBySlug: new Map() });
     for (const row of [...bundle.activities, ...bundle.strengthSets]) {
       expect(row.user_id).toBe(USER);
     }
@@ -397,7 +407,7 @@ describe("buildInsertBundle over a pasted session", () => {
 
   it("numbers sets from one, in source order, across exercises", () => {
     const draft = applyPasteEdits(parse().sessions[0]!, new Map());
-    const bundle = buildInsertBundle(draft, USER, new Map());
+    const bundle = buildInsertBundle(draft, USER, { exerciseIdBySlug: new Map() });
     expect(bundle.strengthSets.map((s) => s.set_index)).toEqual([
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
     ]);

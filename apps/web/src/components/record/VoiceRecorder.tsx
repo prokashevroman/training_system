@@ -5,16 +5,15 @@ import { formatTimer, useRecorder, MAX_RECORDING_SECONDS } from "../../lib/voice
 /**
  * The record button and its states (brief 7.1).
  *
- * Stopping a recording sends it straight to transcription — there is no
- * "Interpret" step any more because there is no interpreter. The transcript
- * comes back as plain text and the confirm screen (not this component) is
- * where it gets saved. Typed text skips the network entirely: with no parser
- * in the pipeline, typing IS the transcript.
+ * Stopping a recording sends it straight to transcription, and the transcript
+ * goes straight to the structuring screen — one preview, one Save. Typed text
+ * takes the identical path without the network; the `origin` argument keeps
+ * provenance honest (`voice` fills the transcript column, typed text does not).
  */
 
 interface Props {
-  /** Called with the transcript (or typed text) to review and save. */
-  onTranscript: (text: string) => void;
+  /** Called with the transcript or typed text, to structure and save. */
+  onTranscript: (text: string, origin: "voice" | "manual") => void;
   onManual: () => void;
   onPaste: () => void;
 }
@@ -33,7 +32,7 @@ export function VoiceRecorder({ onTranscript, onManual, onPaste }: Props) {
     try {
       const text = await transcribe(recorder.recording);
       recorder.reset();
-      onTranscript(text);
+      onTranscript(text, "voice");
     } catch (error) {
       if (error instanceof WorkerError) {
         setSendError(`${error.message}${error.requestId ? ` (request ${error.requestId})` : ""}`);
@@ -141,7 +140,7 @@ export function VoiceRecorder({ onTranscript, onManual, onPaste }: Props) {
       <details className="rounded-xl border border-slate-800 bg-slate-900/50 p-4">
         <summary className="cursor-pointer text-sm text-slate-300">Type it instead</summary>
         <p className="mt-2 text-xs text-slate-500">
-          Goes straight to the same confirm screen — no network, no waiting.
+          Goes straight to the same structuring screen — no network, no waiting.
         </p>
         <textarea
           value={typed}
@@ -154,7 +153,7 @@ export function VoiceRecorder({ onTranscript, onManual, onPaste }: Props) {
           type="button"
           disabled={typed.trim().length === 0}
           onClick={() => {
-            onTranscript(typed.trim());
+            onTranscript(typed.trim(), "manual");
             setTyped("");
           }}
           className="mt-2 rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"

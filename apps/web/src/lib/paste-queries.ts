@@ -10,10 +10,12 @@ import type { ParseWarning } from "../../../../packages/domain/src/warnings.js";
 import { useAuth } from "./auth.js";
 import { queryKeys } from "./queries.js";
 import {
+  assertBenchmarkLinksResolvable,
   assertExerciseLinksResolvable,
   buildInsertBundle,
   insertSessionBundle,
   unsupportedDraftParts,
+  useBenchmarkDefinitionLookup,
   useExerciseLibraryLookup,
   type SaveManualSessionResult,
 } from "./record-queries.js";
@@ -75,9 +77,10 @@ export interface PastedParse {
   /** Exercise raw texts no alias resolved, deduplicated in source order. */
   unresolvedExercises: string[];
   /**
-   * Parsed detail the insert path has no table for, per session index. Empty
-   * when everything parsed can be stored. Non-empty blocks the save rather
-   * than writing a session that quietly lost its splits.
+   * Parsed detail the insert path has no table for, per session index. Since
+   * the insert path learned intervals, circuits and benchmarks (2026-09) only
+   * tags qualify, and the parser never emits them — so this is empty in
+   * practice and exists as a loud failure mode for future parser changes.
    */
   unsupported: { sessionIndex: number; parts: string[] }[];
 }
@@ -293,6 +296,7 @@ export function useSavePastedSessions() {
   const queryClient = useQueryClient();
   const { userId } = useAuth();
   const lookup = useExerciseLibraryLookup();
+  const benchmarkLookup = useBenchmarkDefinitionLookup();
 
   return useMutation<
     SavePastedResult,
@@ -303,15 +307,16 @@ export function useSavePastedSessions() {
       if (!userId) throw new Error("Not signed in.");
       if (sessions.length === 0) throw new Error("There is nothing to save.");
 
-      // Both checks run over every session before anything is written: a
+      // Every check runs over every session before anything is written: a
       // refusal has to happen instead of the save, not half way through it.
       const drafts = sessions.map((session) => applyPasteEdits(session, slugByRawText));
       for (const draft of drafts) {
         assertExerciseLinksResolvable(draft, lookup);
+        assertBenchmarkLinksResolvable(draft, benchmarkLookup);
         const parts = unsupportedDraftParts(draft);
         if (parts.length > 0) {
           throw new Error(
-            `“${draft.title}” parsed into ${parts.join(" and ")}, which paste entry cannot store yet. Use manual entry for it, or remove those lines.`,
+            `“${draft.title}” parsed into ${parts.join(" and ")}, which this screen has no table for yet.`,
           );
         }
       }
@@ -319,7 +324,10 @@ export function useSavePastedSessions() {
       const written: SaveManualSessionResult[] = [];
       try {
         for (const draft of drafts) {
-          const bundle = buildInsertBundle(draft, userId, lookup.idBySlug);
+          const bundle = buildInsertBundle(draft, userId, {
+            exerciseIdBySlug: lookup.idBySlug,
+            benchmarkIdBySlug: benchmarkLookup.idBySlug,
+          });
           written.push(await insertSessionBundle(bundle, draft.clientRequestKey));
         }
       } catch (error) {

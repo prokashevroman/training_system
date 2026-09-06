@@ -19,6 +19,7 @@ export const queryKeys = {
   sessionsByDate: (date: string) => ["sessions", "date", date] as const,
   session: (id: string) => ["sessions", id] as const,
   exercises: ["exercises"] as const,
+  benchmarkDefinitions: ["benchmark-definitions", "lookup"] as const,
   importEntries: ["import-entries"] as const,
   profile: ["profile"] as const,
 };

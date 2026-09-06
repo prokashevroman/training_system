@@ -15,12 +15,12 @@ import { parseCell } from "../parse.js";
  * re-derivability are untouched. A leading date line (`31.08:`) becomes the
  * session's `local_date` instead of a junk activity.
  *
- * Deliberately narrow, mirroring the app's own insert path
- * (`buildInsertBundle` in apps/web/src/lib/record-queries.ts): it writes only
- * activities and strength sets, refuses drafts that need the interval, circuit
- * or benchmark tables, refuses a text that parses into several sessions, and
- * refuses a session that already has children. Anything it cannot do
- * losslessly, it reports instead of doing.
+ * Deliberately narrow, following the app's own insert path
+ * (`buildInsertBundle` in apps/web/src/lib/record-queries.ts): it writes
+ * activities, strength sets and cardio intervals, refuses drafts that need the
+ * circuit or benchmark tables, refuses a text that parses into several
+ * sessions, and refuses a session that already has children. Anything it
+ * cannot do losslessly, it reports instead of doing.
  *
  * Dry-run by default, like the importer:
  *
@@ -66,18 +66,20 @@ function shortTitle(title: string): string {
   return `${(lastSpace > 20 ? cut.slice(0, lastSpace) : cut).trimEnd()}…`;
 }
 
-/** Same refusal as the app's `unsupportedDraftParts`: three tables, no more. */
+/**
+ * What this tool cannot write. Narrower than the app since the app learned all
+ * child tables (2026-09): sets and cardio intervals cover every plain note seen
+ * so far, so circuits and benchmarks are refused here rather than duplicating
+ * that mapping — re-enter those through the app's Record screen instead.
+ */
 function unsupportedParts(draft: SessionDraft): string[] {
   const parts: string[] = [];
-  let intervals = 0;
   let circuits = 0;
   let benchmarks = 0;
   for (const activity of draft.activities) {
-    intervals += activity.cardioIntervals.length;
     if (activity.circuit !== null) circuits += 1;
     if (activity.benchmark !== null) benchmarks += 1;
   }
-  if (intervals > 0) parts.push(`${intervals} cardio intervals`);
   if (circuits > 0) parts.push(`${circuits} circuits`);
   if (benchmarks > 0) parts.push(`${benchmarks} benchmark results`);
   if (draft.tags.length > 0) parts.push(`${draft.tags.length} tags`);
@@ -144,10 +146,13 @@ async function main(): Promise<void> {
   const idBySlug = new Map((exercises.data ?? []).map((row) => [row.slug, row.id]));
 
   const setCount = draft.activities.reduce((n, a) => n + a.strengthSets.length, 0);
+  const intervalCount = draft.activities.reduce((n, a) => n + a.cardioIntervals.length, 0);
   console.log(`Session ${session.id} (${session.source}, was ${session.local_date})`);
   console.log(`  -> local_date ${localDate}${dated.localDate ? " (from the text)" : ""}`);
   console.log(`  -> title ${JSON.stringify(shortTitle(draft.title))}`);
-  console.log(`  -> ${draft.activities.length} activities, ${setCount} sets`);
+  console.log(
+    `  -> ${draft.activities.length} activities, ${setCount} sets, ${intervalCount} intervals`,
+  );
   for (const warning of parsed.warnings) console.log(`  warn ${warning.code}: ${warning.message}`);
   for (const line of parsed.unconsumedLines) console.log(`  unconsumed: ${JSON.stringify(line)}`);
 
@@ -208,12 +213,38 @@ async function main(): Promise<void> {
     })),
   );
 
+  const intervalRows = draft.activities.flatMap((activity, index) =>
+    activity.cardioIntervals.map((interval) => ({
+      user_id: session.user_id,
+      activity_id: activityRows[index]!.id,
+      interval_index: interval.intervalIndex,
+      interval_type: interval.intervalType,
+      duration_seconds: interval.durationSeconds,
+      rest_seconds: interval.restSeconds,
+      distance_km: interval.distanceKm,
+      pace_seconds_per_km: interval.paceSecondsPerKm,
+      split_seconds_per_500m: interval.splitSecondsPer500m,
+      speed_value: interval.speedValue,
+      speed_unit: interval.speedUnit,
+      heart_rate_bpm: interval.heartRateBpm,
+      power_watts: interval.powerWatts,
+      cadence_spm: interval.cadenceSpm,
+      calories: interval.calories,
+      notes: interval.notes,
+      original_text: interval.originalText,
+    })),
+  );
+
   const insertedActivities = await db.from("activities").insert(activityRows);
   if (insertedActivities.error) throw insertedActivities.error;
   try {
     if (setRows.length > 0) {
       const insertedSets = await db.from("strength_sets").insert(setRows);
       if (insertedSets.error) throw insertedSets.error;
+    }
+    if (intervalRows.length > 0) {
+      const insertedIntervals = await db.from("cardio_intervals").insert(intervalRows);
+      if (insertedIntervals.error) throw insertedIntervals.error;
     }
     const updated = await db
       .from("workout_sessions")

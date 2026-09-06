@@ -312,59 +312,54 @@ export interface SessionInsertBundle {
   session: TablesInsert<"workout_sessions">;
   activities: TablesInsert<"activities">[];
   strengthSets: TablesInsert<"strength_sets">[];
+  cardioIntervals: TablesInsert<"cardio_intervals">[];
+  circuitResults: TablesInsert<"circuit_results">[];
+  circuitMovements: TablesInsert<"circuit_movements">[];
+  benchmarkResults: TablesInsert<"benchmark_results">[];
+  benchmarkSplits: TablesInsert<"benchmark_splits">[];
+}
+
+/** The slug → id lookups a bundle needs; both come from reference tables. */
+export interface SlugLookups {
+  exerciseIdBySlug: ReadonlyMap<string, string>;
+  benchmarkIdBySlug?: ReadonlyMap<string, string>;
 }
 
 /**
- * Draft fields this bundle cannot write, because they live in tables it does
- * not insert into: `cardio_intervals`, `circuit_results` + `circuit_movements`,
- * `benchmark_results` + `benchmark_splits`, and `session_tags`.
- *
- * The manual form cannot produce any of them, but the workbook parser behind
- * paste entry can. Callers must check this *before* saving — a draft that
- * silently loses its benchmark splits is exactly the kind of quiet data loss
- * the import pipeline is built to prevent.
+ * Draft fields this bundle cannot write. Since the insert path learned the
+ * interval, circuit and benchmark tables (2026-09), only `session_tags`
+ * remains — and the parser currently never emits tags, so in practice nothing
+ * a parse produces is refused any more. The check stays so a future parser
+ * change fails loudly here instead of quietly dropping data.
  */
 export function unsupportedDraftParts(draft: SessionDraft): string[] {
-  let intervals = 0;
-  let circuits = 0;
-  let benchmarks = 0;
-  for (const activity of draft.activities) {
-    intervals += activity.cardioIntervals.length;
-    if (activity.circuit !== null) circuits += 1;
-    if (activity.benchmark !== null) benchmarks += 1;
-  }
-
-  const parts: string[] = [];
-  if (intervals > 0)
-    parts.push(`${intervals} cardio ${intervals === 1 ? "interval" : "intervals"}`);
-  if (circuits > 0) parts.push(`${circuits} ${circuits === 1 ? "circuit" : "circuits"}`);
-  if (benchmarks > 0) {
-    parts.push(`${benchmarks} benchmark ${benchmarks === 1 ? "result" : "results"}`);
-  }
-  if (draft.tags.length > 0) {
-    parts.push(`${draft.tags.length} ${draft.tags.length === 1 ? "tag" : "tags"}`);
-  }
-  return parts;
+  if (draft.tags.length === 0) return [];
+  return [`${draft.tags.length} ${draft.tags.length === 1 ? "tag" : "tags"}`];
 }
 
 /**
- * Builds the three insert payloads.
+ * Builds the insert payloads for everything a parsed draft can carry: the
+ * session, activities, strength sets, cardio intervals, circuits with their
+ * movements, and benchmarks with their splits. The column mapping mirrors
+ * `public.apply_import_entry` (migration 0011) field for field, so a session
+ * saved from the browser and one applied by the importer are indistinguishable.
  *
  * Row ids are generated here rather than read back from Postgres so children
  * can reference their parents without a round trip, and `user_id` is stamped on
  * every row: the composite foreign keys are `(parent_id, user_id)`, so a child
  * whose `user_id` differs from its parent's is rejected outright.
  *
- * Every column of these three tables is written. Anything a draft carries that
- * these three tables have no room for is reported by {@link unsupportedDraftParts}
- * rather than dropped on the floor here.
+ * The one thing a draft can carry that has no table here is `tags`, reported by
+ * {@link unsupportedDraftParts} rather than dropped on the floor.
  */
 export function buildInsertBundle(
   draft: SessionDraft,
   userId: string,
-  exerciseIdBySlug: ReadonlyMap<string, string>,
+  lookups: SlugLookups,
   newId: () => string = () => crypto.randomUUID(),
 ): SessionInsertBundle {
+  const { exerciseIdBySlug } = lookups;
+  const benchmarkIdBySlug = lookups.benchmarkIdBySlug ?? new Map<string, string>();
   const sessionId = newId();
 
   const session: TablesInsert<"workout_sessions"> = {
@@ -385,6 +380,11 @@ export function buildInsertBundle(
 
   const activities: TablesInsert<"activities">[] = [];
   const strengthSets: TablesInsert<"strength_sets">[] = [];
+  const cardioIntervals: TablesInsert<"cardio_intervals">[] = [];
+  const circuitResults: TablesInsert<"circuit_results">[] = [];
+  const circuitMovements: TablesInsert<"circuit_movements">[] = [];
+  const benchmarkResults: TablesInsert<"benchmark_results">[] = [];
+  const benchmarkSplits: TablesInsert<"benchmark_splits">[] = [];
 
   for (const activity of draft.activities) {
     const activityId = newId();
@@ -441,9 +441,132 @@ export function buildInsertBundle(
         original_text: set.originalText,
       });
     }
+
+    for (const interval of activity.cardioIntervals) {
+      cardioIntervals.push({
+        user_id: userId,
+        activity_id: activityId,
+        interval_index: interval.intervalIndex,
+        interval_type: interval.intervalType,
+        duration_seconds: interval.durationSeconds,
+        rest_seconds: interval.restSeconds,
+        distance_km: interval.distanceKm,
+        pace_seconds_per_km: interval.paceSecondsPerKm,
+        split_seconds_per_500m: interval.splitSecondsPer500m,
+        speed_value: interval.speedValue,
+        // Null when the source stated a bare number. Never assumed (the
+        // AMBIGUOUS_SPEED_UNIT rule survives all the way to the column).
+        speed_unit: interval.speedUnit,
+        heart_rate_bpm: interval.heartRateBpm,
+        power_watts: interval.powerWatts,
+        cadence_spm: interval.cadenceSpm,
+        calories: interval.calories,
+        notes: interval.notes,
+        original_text: interval.originalText,
+      });
+    }
+
+    if (activity.circuit !== null) {
+      const circuit = activity.circuit;
+      const circuitId = newId();
+      circuitResults.push({
+        id: circuitId,
+        user_id: userId,
+        activity_id: activityId,
+        format: circuit.format,
+        name: circuit.name,
+        rounds_prescribed: circuit.roundsPrescribed,
+        rounds_completed: circuit.roundsCompleted,
+        partial_round_reps: circuit.partialRoundReps,
+        time_cap_seconds: circuit.timeCapSeconds,
+        completion_seconds: circuit.completionSeconds,
+        score: circuit.score,
+        work_seconds: circuit.workSeconds,
+        rest_seconds: circuit.restSeconds,
+        as_prescribed: circuit.asPrescribed,
+        details: circuit.details as Json,
+        notes: circuit.notes,
+        original_text: circuit.originalText,
+      });
+      for (const movement of circuit.movements) {
+        circuitMovements.push({
+          user_id: userId,
+          circuit_result_id: circuitId,
+          movement_order: movement.movementOrder,
+          exercise_id: movement.exercise.slug
+            ? (exerciseIdBySlug.get(movement.exercise.slug) ?? null)
+            : null,
+          exercise_raw_text: movement.exercise.rawText.trim() || "unknown",
+          apparatus: movement.exercise.apparatus,
+          exercise_confidence: movement.exercise.confidence,
+          target_reps: movement.targetReps,
+          target_calories: movement.targetCalories,
+          target_distance_km: movement.targetDistanceKm,
+          target_seconds: movement.targetSeconds,
+          load_value: movement.loadValue,
+          load_unit: movement.loadUnit,
+          load_scope: movement.loadScope,
+          load_kg: movement.loadKg,
+          notes: movement.notes,
+          original_text: movement.originalText,
+        });
+      }
+    }
+
+    if (activity.benchmark !== null) {
+      const benchmark = activity.benchmark;
+      const benchmarkId = newId();
+      benchmarkResults.push({
+        id: benchmarkId,
+        user_id: userId,
+        activity_id: activityId,
+        // Nullable link; the slug column keeps the name verbatim regardless.
+        definition_id: benchmarkIdBySlug.get(benchmark.definitionSlug) ?? null,
+        definition_slug: benchmark.definitionSlug,
+        variant_label: benchmark.variantLabel,
+        scoring: benchmark.scoring,
+        total_seconds: benchmark.totalSeconds,
+        rounds_completed: benchmark.roundsCompleted,
+        score: benchmark.score,
+        vest_kg: benchmark.vestKg,
+        as_prescribed: benchmark.asPrescribed,
+        partition_strategy: benchmark.partitionStrategy,
+        notes: benchmark.notes,
+        original_text: benchmark.originalText,
+      });
+      for (const split of benchmark.splits) {
+        benchmarkSplits.push({
+          user_id: userId,
+          benchmark_result_id: benchmarkId,
+          split_order: split.splitOrder,
+          label: split.label,
+          reps: split.reps,
+          distance_km: split.distanceKm,
+          elapsed_seconds: split.elapsedSeconds,
+          // Stays null across mixed reference frames — the Murph rule.
+          split_seconds: split.splitSeconds,
+          is_cumulative: split.isCumulative,
+          reference_frame: split.referenceFrame,
+          pace_seconds_per_km: split.paceSecondsPerKm,
+          heart_rate_bpm: split.heartRateBpm,
+          cadence_spm: split.cadenceSpm,
+          notes: split.notes,
+          original_text: split.originalText,
+        });
+      }
+    }
   }
 
-  return { session, activities, strengthSets };
+  return {
+    session,
+    activities,
+    strengthSets,
+    cardioIntervals,
+    circuitResults,
+    circuitMovements,
+    benchmarkResults,
+    benchmarkSplits,
+  };
 }
 
 // --- Choices offered by the form --------------------------------------------
@@ -472,12 +595,13 @@ export interface SaveManualSessionResult {
 }
 
 /**
- * Writes one session tree: session row, then activities, then sets.
+ * Writes one session tree: session row, then activities, then every kind of
+ * child in dependency order.
  *
  * Shared by manual entry and pasted-text entry so the duplicate handling and
  * the rollback exist once. PostgREST gives one transaction per request, not per
  * bundle, so a failure part-way through is undone here by deleting the session
- * — children cascade from it.
+ * — every child table cascades from it through `activities`.
  */
 export async function insertSessionBundle(
   bundle: SessionInsertBundle,
@@ -507,15 +631,25 @@ export async function insertSessionBundle(
   try {
     const activities = await supabase.from("activities").insert(bundle.activities);
     if (activities.error) throw activities.error;
-    if (bundle.strengthSets.length > 0) {
-      const sets = await supabase.from("strength_sets").insert(bundle.strengthSets);
-      if (sets.error) throw sets.error;
+    // Parents before children; each insert only when it has rows.
+    const childInserts = [
+      ["strength_sets", bundle.strengthSets],
+      ["cardio_intervals", bundle.cardioIntervals],
+      ["circuit_results", bundle.circuitResults],
+      ["circuit_movements", bundle.circuitMovements],
+      ["benchmark_results", bundle.benchmarkResults],
+      ["benchmark_splits", bundle.benchmarkSplits],
+    ] as const;
+    for (const [table, rows] of childInserts) {
+      if (rows.length === 0) continue;
+      const result = await supabase.from(table).insert(rows as never[]);
+      if (result.error) throw result.error;
     }
   } catch (error) {
-    // Roll back so no half-written tree survives. Activities and sets
-    // cascade from the session, so one delete is enough; if the delete
-    // itself fails the original error still wins, because that is the
-    // one that explains what went wrong.
+    // Roll back so no half-written tree survives. Every child cascades from
+    // the session, so one delete is enough; if the delete itself fails the
+    // original error still wins, because that is the one that explains what
+    // went wrong.
     await supabase.from("workout_sessions").delete().eq("id", sessionId);
     throw error;
   }
@@ -555,12 +689,48 @@ export function assertExerciseLinksResolvable(
   lookup: ExerciseLibraryLookup,
 ): void {
   if (lookup.isReady) return;
-  const wouldLoseLink = draft.activities.some((activity) =>
-    activity.strengthSets.some((set) => set.exercise.slug !== null),
+  const wouldLoseLink = draft.activities.some(
+    (activity) =>
+      activity.strengthSets.some((set) => set.exercise.slug !== null) ||
+      (activity.circuit?.movements.some((movement) => movement.exercise.slug !== null) ?? false),
   );
   if (wouldLoseLink) {
     throw new Error(
       "The exercise library has not finished loading, so these exercises cannot be linked yet. Wait a moment and try again.",
+    );
+  }
+}
+
+/**
+ * Same idea for benchmarks: `definition_id` is a nullable link and the slug is
+ * stored verbatim either way, but writing null just because the reference query
+ * had not resolved yet would silently detach the result from its definition.
+ */
+export function useBenchmarkDefinitionLookup(): ExerciseLibraryLookup {
+  const definitions = useQuery({
+    queryKey: queryKeys.benchmarkDefinitions,
+    // Reference data: it only changes with a migration, so cache it hard.
+    staleTime: Infinity,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("benchmark_definitions").select("id, slug");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+  return {
+    idBySlug: new Map((definitions.data ?? []).map((row) => [row.slug, row.id])),
+    isReady: definitions.isSuccess,
+  };
+}
+
+export function assertBenchmarkLinksResolvable(
+  draft: SessionDraft,
+  lookup: ExerciseLibraryLookup,
+): void {
+  if (lookup.isReady) return;
+  if (draft.activities.some((activity) => activity.benchmark !== null)) {
+    throw new Error(
+      "The benchmark library has not finished loading, so this result cannot be linked yet. Wait a moment and try again.",
     );
   }
 }
@@ -579,7 +749,7 @@ export function useSaveManualSession() {
       if (!userId) throw new Error("Not signed in.");
       const draft = toSessionDraft(form, requestKey);
       assertExerciseLinksResolvable(draft, lookup);
-      const bundle = buildInsertBundle(draft, userId, lookup.idBySlug);
+      const bundle = buildInsertBundle(draft, userId, { exerciseIdBySlug: lookup.idBySlug });
       return insertSessionBundle(bundle, requestKey);
     },
     onSuccess: () => {
@@ -588,48 +758,48 @@ export function useSaveManualSession() {
   });
 }
 
-// --- Voice save ---------------------------------------------------------------
+// --- Plain-note save ----------------------------------------------------------
 
 /**
- * One key per *recording*, minted when the transcript screen opens — not per
+ * One key per *recording*, minted when the entry screen opens — not per
  * save attempt — so a double-tap on Save cannot write two sessions.
  */
 export function newVoiceRequestKey(): string {
   return `voice:${crypto.randomUUID()}`;
 }
 
-export interface SaveVoiceSessionInput {
-  transcript: string;
+export interface SaveNoteSessionInput {
+  text: string;
   title: string;
   localDate: string;
   requestKey: string;
+  /** How the text entered the system; `voice` also fills the transcript column. */
+  source: "voice" | "manual";
 }
 
 /**
- * Saves a transcript as a complete session row. No activities, no sets: the
- * transcript IS the record (`raw_text` keeps it verbatim, per the schema's
- * "every structured record must stay re-derivable" rule), and any structure is
- * the athlete's to add later. This replaces the old AI parsing pipeline — the
- * one step between speech and the database is now the athlete reading what was
- * heard and tapping Save.
+ * Saves entry text as a complete session row. No activities, no sets: the
+ * text IS the record (`raw_text` keeps it verbatim, per the schema's
+ * "every structured record must stay re-derivable" rule). The escape hatch for
+ * a day the athlete does not want structured at all.
  */
-export function useSaveVoiceSession() {
+export function useSaveNoteSession() {
   const queryClient = useQueryClient();
   const { userId } = useAuth();
 
-  return useMutation<SaveManualSessionResult, Error, SaveVoiceSessionInput>({
-    mutationFn: async ({ transcript, title, localDate, requestKey }) => {
+  return useMutation<SaveManualSessionResult, Error, SaveNoteSessionInput>({
+    mutationFn: async ({ text: rawText, title, localDate, requestKey, source }) => {
       if (!userId) throw new Error("Not signed in.");
-      const text = transcript.trim();
-      if (text === "") throw new Error("The transcript is empty.");
+      const text = rawText.trim();
+      if (text === "") throw new Error("There is nothing to save.");
 
       const row: TablesInsert<"workout_sessions"> = {
         user_id: userId,
         local_date: localDate,
-        title: title.trim() === "" ? "Voice session" : title.trim(),
-        source: "voice",
+        title: title.trim() === "" ? "Training note" : title.trim(),
+        source,
         raw_text: text,
-        transcript: text,
+        transcript: source === "voice" ? text : null,
         client_request_key: requestKey,
       };
 

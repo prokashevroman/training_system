@@ -173,9 +173,9 @@ Two things worth knowing:
 
 ### Paste entry reuses the importer's parser
 
-The Record screen has a third mode beside voice and the manual form: paste spreadsheet
-notation (`Seated cable row, 3x10 (45kg)`) and get structured rows. The voice flow's
-"Structure into sets" lands in this same form. It calls
+Every text path on the Record screen — voice transcript, typed text, pasted
+spreadsheet notation (`Seated cable row, 3x10 (45kg)`) — lands in one structuring
+form, `PasteEntryForm`. It calls
 `parseCell` from `@training/import-workbook/parse` — the _same_ deterministic parser
 the workbook import runs, exposed through that package's `exports` map so only the pure
 entry point is reachable from the browser. No model, no network.
@@ -212,15 +212,18 @@ From there it is an ordinary `SessionDraft`, so `buildInsertBundle` +
 `unconsumedLines` are rendered before saving rather than dropped — same rule as the
 importer.
 
-Two limits are enforced rather than papered over, both in `record-queries.ts`:
+`buildInsertBundle` writes the **whole** session tree — `workout_sessions`,
+`activities`, `strength_sets`, `cardio_intervals`, `circuit_results` +
+`circuit_movements`, `benchmark_results` + `benchmark_splits` — with the column
+mapping mirroring `public.apply_import_entry` (migration 0011) field for field.
+Nothing a parse produces is refused any more (that refusal cost a real interval
+workout in Sep 2026); the two guards that remain, both in `record-queries.ts`:
 
-- `buildInsertBundle` writes only `workout_sessions`, `activities` and `strength_sets`.
-  A draft carrying `cardioIntervals`, `circuit`, `benchmark` or `tags` needs tables it
-  does not touch, so `unsupportedDraftParts` reports them and the save is **refused**
-  with the reason. A pasted Murph parses fine and will not save until that path exists.
-- `assertExerciseLinksResolvable` refuses to save resolved slugs while the exercise
-  library query is still loading or has failed, because `exercise_id` would silently
-  land as null and the canonical link would be lost to network timing.
+- `unsupportedDraftParts` reports only `tags`, which the parser never emits today —
+  it exists so a future parser change fails loudly instead of dropping data.
+- `assertExerciseLinksResolvable` / `assertBenchmarkLinksResolvable` refuse to save
+  resolved slugs while the exercise or benchmark reference query is still loading,
+  because the canonical link would silently land as null on network timing.
 
 Blank lines do **not** reliably separate sessions: the splitter's `mergeAdjacentSameKind`
 keeps two strength blocks as one gym session, while a commute or benchmark opens its
@@ -231,11 +234,15 @@ app. Don't fork a second parser into `apps/web`.
 
 ### Voice flow (text-only Worker — deliberately)
 
-Recording → `POST /v1/transcriptions` (Whisper) → editable transcript in the browser →
-either **Structure into sets** (default: the transcript enters the paste flow below,
-with `source='voice'` and the transcript verbatim in both `raw_text` and `transcript`)
-or **Save as note** (the old one-tap save, no children). Typed text skips the network
-entirely.
+Recording → `POST /v1/transcriptions` (Whisper) → the transcript lands **directly on
+the structuring screen** (`PasteEntryForm`, `source='voice'`, transcript verbatim in
+both `raw_text` and `transcript`) — there is no confirm screen in between. Typed text
+takes the identical path without the network, as `source='manual'`. On that screen the
+deterministic parser runs per keystroke, and when it leaves unread lines the AI rewrite
+fires **automatically, once** (debounced, never retried silently, Undo available);
+"Save as plain note" is the escape hatch (`useSaveNoteSession`). The flow is
+deliberately: speak or type → read the preview → one Save. Never add a step that makes
+the athlete do the structuring themselves; that is the product decision of Sep 2026.
 
 The LLM workout **parser** (model → JSON draft) and planner were removed in Aug 2026 as
 a product decision and stay removed. What was added back in Sep 2026, on request, is

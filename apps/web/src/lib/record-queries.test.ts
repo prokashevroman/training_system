@@ -214,7 +214,7 @@ describe("buildInsertBundle", () => {
     },
     "manual:abc",
   );
-  const bundle = buildInsertBundle(draft, "user-1", SLUGS, idFactory());
+  const bundle = buildInsertBundle(draft, "user-1", { exerciseIdBySlug: SLUGS }, idFactory());
 
   it("stamps user_id on every row, as the composite foreign keys require", () => {
     const rows = [bundle.session, ...bundle.activities, ...bundle.strengthSets];

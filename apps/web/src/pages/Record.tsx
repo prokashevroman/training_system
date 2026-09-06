@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { ManualEntryForm } from "../components/record/ManualEntryForm.js";
 import { PasteEntryForm } from "../components/record/PasteEntryForm.js";
-import { TranscriptConfirm } from "../components/record/TranscriptConfirm.js";
 import { VoiceRecorder } from "../components/record/VoiceRecorder.js";
 
 /**
@@ -12,49 +11,38 @@ import { VoiceRecorder } from "../components/record/VoiceRecorder.js";
  * `VITE_AI_WORKER_URL` is unset it renders disabled with a reason rather than
  * pretending to listen — the app has to stay fully usable without voice.
  *
- * Every text path leads to the same structured-entry screen: a transcript can
- * be structured into sessions and sets (or saved as a plain note), and pasted
- * text goes through the identical parser preview. The parser is deterministic;
- * the one optional model call rewrites chaotic wording into notation, and its
- * output is re-parsed and shown before anything is saved.
+ * Every kind of text — spoken, typed, pasted — lands on the same structuring
+ * screen: the deterministic parser reads it, an automatic AI rewrite steps in
+ * only for what the parser could not read, and one Save writes the whole
+ * session tree. There is no confirm screen in between and nothing the parse
+ * produces is refused; "save as a plain note" stays available on that screen
+ * as the escape hatch. The manual field-by-field form remains for whoever
+ * wants it, but no flow requires it.
  */
 export function Record() {
   const [mode, setMode] = useState<"capture" | "manual" | "paste">("capture");
-  const [transcript, setTranscript] = useState<string | null>(null);
-  /** A transcript handed over for structuring; renders the paste flow as voice. */
-  const [structuring, setStructuring] = useState<string | null>(null);
+  /** Text handed over for structuring, with its provenance. */
+  const [structuring, setStructuring] = useState<{
+    text: string;
+    origin: "voice" | "manual";
+  } | null>(null);
 
   if (structuring !== null) {
     return (
       <div className="space-y-4">
         <header>
-          <h1 className="text-xl font-semibold">Structure the session</h1>
+          <h1 className="text-xl font-semibold">Check and save</h1>
           <p className="text-sm text-slate-400">
-            The parser reads your transcript into exercises, sets and loads — and tells you
-            anything it could not read rather than guessing. The transcript itself is stored with
-            the session either way.
+            This is how your session was read. Fix anything that looks wrong, then save — your
+            exact words are stored with it regardless.
           </p>
         </header>
         <PasteEntryForm
-          origin="voice"
-          initialText={structuring}
+          origin={structuring.origin}
+          initialText={structuring.text}
           onCancel={() => setStructuring(null)}
         />
       </div>
-    );
-  }
-
-  if (transcript !== null) {
-    return (
-      <TranscriptConfirm
-        transcript={transcript}
-        onStructure={(text) => {
-          setStructuring(text);
-          setTranscript(null);
-        }}
-        onDone={() => setTranscript(null)}
-        onDiscard={() => setTranscript(null)}
-      />
     );
   }
 
@@ -64,9 +52,8 @@ export function Record() {
         <header>
           <h1 className="text-xl font-semibold">Paste a session</h1>
           <p className="text-sm text-slate-400">
-            Write it the way you write it in the spreadsheet — or however it comes out. The same
-            parser that imported the workbook maps it onto exercises, sets and loads, and tells
-            you anything it could not read rather than guessing.
+            Write it the way you write it in the spreadsheet — or however it comes out. The parser
+            maps it onto exercises, sets, intervals and loads, and shows you what it read.
           </p>
         </header>
         <PasteEntryForm onCancel={() => setMode("capture")} />
@@ -93,10 +80,12 @@ export function Record() {
     <div className="space-y-6">
       <header>
         <h1 className="text-xl font-semibold">Record</h1>
-        <p className="text-sm text-slate-400">Capture a session you have just finished.</p>
+        <p className="text-sm text-slate-400">
+          Speak it or type it — it comes back as a structured session to save.
+        </p>
       </header>
       <VoiceRecorder
-        onTranscript={setTranscript}
+        onTranscript={(text, origin) => setStructuring({ text, origin })}
         onManual={() => setMode("manual")}
         onPaste={() => setMode("paste")}
       />
