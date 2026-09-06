@@ -1,6 +1,6 @@
 import type { WorkoutSession } from "@training/db-types";
 import { useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { ActivityDetail, type ActivityWithChildren } from "../components/ActivityDetail.js";
 import { SessionEditFields } from "../components/SessionEditForm.js";
 import { SourceText } from "../components/SourceText.js";
@@ -23,6 +23,7 @@ type SessionTree = WorkoutSession & { activities: ActivityWithChildren[] };
  */
 export function SessionDetail() {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const query = useSession(id);
   const benchmarks = useBenchmarkDefinitions();
   const [isEditing, setIsEditing] = useState(false);
@@ -88,7 +89,13 @@ export function SessionDetail() {
         </div>
       </header>
 
-      {isEditing && <SessionEditFields session={session} onClose={() => setIsEditing(false)} />}
+      {isEditing && (
+        <SessionEditFields
+          session={session}
+          onClose={() => setIsEditing(false)}
+          onDeleted={() => navigate("/history")}
+        />
+      )}
 
       {session.notes && (
         <p className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-300">

@@ -338,6 +338,31 @@ export function useUpdateSession(sessionId: string) {
   });
 }
 
+/**
+ * Deletes one session and, with it, its whole tree.
+ *
+ * Only the `workout_sessions` row is deleted: every child (activities and their
+ * sets, intervals, circuits with movements, benchmarks with splits, and the
+ * tag joins) carries `on delete cascade` on its composite FK, so Postgres
+ * removes the subtree in the same statement. No `user_id` predicate — the
+ * `workout_sessions_delete_own` RLS policy already restricts the row to its
+ * owner (migration 0010). Mirrors {@link useUpdateSession}'s invalidation: the
+ * gone session must disappear from the detail page, day lists, history and the
+ * Today summary at once.
+ */
+export function useDeleteSession(sessionId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("workout_sessions").delete().eq("id", sessionId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
+    },
+  });
+}
+
 /** Reference data for the benchmark filter. Changes only with a migration. */
 export function useBenchmarkDefinitions() {
   return useQuery({

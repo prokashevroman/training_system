@@ -7,9 +7,14 @@ import {
   secondsToClock,
 } from "@training/domain";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
-import { useUpdateSession, type SessionEditPatch } from "../lib/history-queries.js";
+import {
+  useDeleteSession,
+  useUpdateSession,
+  type SessionEditPatch,
+} from "../lib/history-queries.js";
 import { humanizeEnum } from "./session-format.js";
 
 /**
@@ -95,11 +100,18 @@ export function editFormToPatch(form: SessionEditForm): SessionEditPatch {
 export function SessionEditFields({
   session,
   onClose,
+  onDeleted,
 }: {
   session: WorkoutSession;
   onClose: () => void;
+  /** Called after the session is deleted, so the parent can navigate away. */
+  onDeleted: () => void;
 }) {
   const update = useUpdateSession(session.id);
+  const del = useDeleteSession(session.id);
+  // A delete is destructive and cascades the whole tree, so the button is
+  // two-step: the first tap only arms it, the second actually deletes.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const {
     register,
     handleSubmit,
@@ -113,6 +125,11 @@ export function SessionEditFields({
     await update.mutateAsync(editFormToPatch(form));
     onClose();
   });
+
+  async function onConfirmDelete() {
+    await del.mutateAsync();
+    onDeleted();
+  }
 
   return (
     <form
@@ -157,16 +174,21 @@ export function SessionEditFields({
           Could not save: {(update.error as Error).message}
         </p>
       )}
+      {del.isError && (
+        <p role="alert" className="rounded-lg bg-rose-950/60 px-3 py-2 text-sm text-rose-300">
+          Could not delete: {(del.error as Error).message}
+        </p>
+      )}
 
       <p className="text-xs text-slate-500">
         Sets, intervals and splits are not editable here — they are parsed from the source text,
         which stays visible below.
       </p>
 
-      <div className="flex gap-2">
+      <div className="flex items-center gap-2">
         <button
           type="submit"
-          disabled={isSubmitting}
+          disabled={isSubmitting || del.isPending}
           className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
         >
           {isSubmitting ? "Saving…" : "Save"}
@@ -178,6 +200,36 @@ export function SessionEditFields({
         >
           Cancel
         </button>
+
+        {confirmingDelete ? (
+          <span className="ml-auto flex items-center gap-2">
+            <span className="text-xs text-slate-400">Delete permanently?</span>
+            <button
+              type="button"
+              onClick={() => void onConfirmDelete()}
+              disabled={del.isPending}
+              className="rounded-lg bg-rose-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50"
+            >
+              {del.isPending ? "Deleting…" : "Delete"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setConfirmingDelete(false)}
+              disabled={del.isPending}
+              className="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-300 disabled:opacity-50"
+            >
+              Keep
+            </button>
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirmingDelete(true)}
+            className="ml-auto rounded-lg px-4 py-2 text-sm text-rose-400 hover:bg-rose-950/40"
+          >
+            Delete
+          </button>
+        )}
       </div>
     </form>
   );
