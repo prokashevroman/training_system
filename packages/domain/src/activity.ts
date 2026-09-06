@@ -26,6 +26,12 @@ export const ActivityDraftSchema = z.object({
 
   durationSeconds: z.number().nullable().default(null),
   distanceKm: z.number().nullable().default(null),
+  /**
+   * Seconds per kilometre for the steady effort, as stated (`5:50 per km` →
+   * 350). Never derived from duration/distance; per-interval paces live on
+   * the intervals instead.
+   */
+  avgPaceSecondsPerKm: z.number().nullable().default(null),
   calories: z.number().nullable().default(null),
   avgHeartRateBpm: z.number().int().nullable().default(null),
   maxHeartRateBpm: z.number().int().nullable().default(null),

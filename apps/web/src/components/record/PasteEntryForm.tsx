@@ -257,28 +257,47 @@ export function PasteEntryForm({
         </span>
       </label>
 
-      {tidy.isPending && (
-        <p className="text-sm text-sky-300">Structuring what the parser could not read…</p>
-      )}
-      {preRewrite !== null && !tidy.isPending && (
-        <p className="text-xs text-slate-500">
-          Rewritten into notation — your original text is what gets stored verbatim.{" "}
-          <button type="button" onClick={onUndoRewrite} className="text-slate-400 underline">
-            Undo, back to your words
-          </button>
-        </p>
-      )}
-      {tidy.error && (
-        <p role="alert" className="text-sm text-rose-400">
-          The AI rewrite failed: {tidy.error.message}{" "}
-          <button
-            type="button"
-            onClick={() => void runTidy().catch(() => undefined)}
-            className="underline"
-          >
-            Try again
-          </button>
-        </p>
+      {isWorkerConfigured() && text.trim() !== "" && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* The rewrite also fires automatically when the parser leaves
+                unread lines; the button stays so it can be invoked (or re-run)
+                at will — removing it once was a mistake. */}
+            <button
+              type="button"
+              onClick={() => void runTidy().catch(() => undefined)}
+              disabled={tidy.isPending}
+              className={`rounded-lg border px-3 py-1.5 text-sm ${
+                wantsRewrite
+                  ? "border-sky-700 bg-sky-950/40 text-sky-200"
+                  : "border-slate-700 text-slate-300"
+              } disabled:opacity-50`}
+            >
+              {tidy.isPending ? "Rewriting…" : "Tidy with AI"}
+            </button>
+            {preRewrite !== null && !tidy.isPending && (
+              <button
+                type="button"
+                onClick={onUndoRewrite}
+                className="text-xs text-slate-400 underline"
+              >
+                Undo — back to your words
+              </button>
+            )}
+            <span className="text-xs text-slate-500">
+              {tidy.isPending
+                ? "Structuring what the parser could not read…"
+                : preRewrite !== null
+                  ? "Rewritten into notation. Your original text is what gets stored verbatim."
+                  : "Rewrites chaotic text into lines the parser reads. Your original words are kept either way."}
+            </span>
+          </div>
+          {tidy.error && (
+            <p role="alert" className="text-sm text-rose-400">
+              The AI rewrite failed: {tidy.error.message}
+            </p>
+          )}
+        </div>
       )}
 
       {text.trim() !== "" && (

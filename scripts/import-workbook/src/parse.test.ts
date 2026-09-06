@@ -40,6 +40,21 @@ describe("one date can hold several sessions — acceptance criterion 11", () =>
   });
 });
 
+describe("a steady run keeps its average pace on the activity", () => {
+  // `6:49 per km` was read by the parser from day one but had no activity
+  // field until 2026-09, so every plain run lost its average pace. Interval
+  // paces were never affected; this pins the steady-effort case.
+  const result = parse("R11C4"); // `10 km outdoor run\n6:49 per km\n...`
+
+  it("maps the pace line onto avgPaceSecondsPerKm in seconds", () => {
+    const activity = result.sessions[0]!.activities[0]!;
+    expect(activity.modality).toBe("running");
+    expect(activity.distanceKm).toBe(10);
+    expect(activity.avgPaceSecondsPerKm).toBe(409);
+    expect(activity.avgHeartRateBpm).toBe(152);
+  });
+});
+
 describe("treadmill speed — acceptance criterion 15", () => {
   const result = parse("R5C6"); // `Treadmill easy run 6 km, speed = 7.0`
 

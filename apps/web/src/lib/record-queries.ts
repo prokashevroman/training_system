@@ -399,6 +399,7 @@ export function buildInsertBundle(
       intensity: activity.intensity,
       duration_seconds: activity.durationSeconds,
       distance_km: activity.distanceKm,
+      avg_pace_seconds_per_km: activity.avgPaceSecondsPerKm,
       calories: activity.calories,
       avg_heart_rate_bpm: activity.avgHeartRateBpm,
       max_heart_rate_bpm: activity.maxHeartRateBpm,

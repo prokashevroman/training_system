@@ -81,6 +81,8 @@ function ActivityMetrics({ activity }: { activity: Activity }) {
     metrics.push(["Distance", formatDistance(activity.distance_km)]);
   if (activity.duration_seconds !== null)
     metrics.push(["Duration", formatClock(activity.duration_seconds)]);
+  if (activity.avg_pace_seconds_per_km !== null)
+    metrics.push(["Avg pace", formatPace(activity.avg_pace_seconds_per_km)]);
   if (activity.elevation_gain_m !== null)
     metrics.push(["Elevation", `${activity.elevation_gain_m} m`]);
   if (activity.avg_heart_rate_bpm !== null)

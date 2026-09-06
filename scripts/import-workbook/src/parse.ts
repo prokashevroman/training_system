@@ -107,6 +107,10 @@ function metricsToActivityFields(m: CardioMetrics) {
   return {
     durationSeconds: m.durationSeconds,
     distanceKm: m.distanceKm,
+    // The steady-effort pace. This was silently dropped until 2026-09 — the
+    // one metric with neither a column nor a `details` entry — which cost the
+    // average pace of every plain run.
+    avgPaceSecondsPerKm: m.paceSecondsPerKm,
     calories: m.calories,
     avgHeartRateBpm: m.avgHeartRateBpm,
     cadenceSpm: m.cadenceSpm,
@@ -135,6 +139,7 @@ function buildActivity(
     intensity: "unknown" as const,
     durationSeconds: null as number | null,
     distanceKm: null as number | null,
+    avgPaceSecondsPerKm: null as number | null,
     calories: null as number | null,
     avgHeartRateBpm: null as number | null,
     maxHeartRateBpm: null as number | null,

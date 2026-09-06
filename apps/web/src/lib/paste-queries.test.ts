@@ -232,6 +232,16 @@ describe("every parsed shape reaches a table", () => {
     const bundle = bundleOf("Bike to & from work");
     expect(bundle.activities[0]!.subtype).toBe("commute");
   });
+
+  it("carries a steady run's average pace into the activity row", () => {
+    // `5:50 per km` on a plain run was dropped until migration 0013 gave it a
+    // column; this pins the whole path: parse -> draft -> insert payload.
+    const bundle = bundleOf("5.7 km outdoor run\n5:50 per km\ncadencia - 168");
+    const activity = bundle.activities[0]!;
+    expect(activity.distance_km).toBe(5.7);
+    expect(activity.avg_pace_seconds_per_km).toBe(350);
+    expect(activity.cadence_spm).toBe(168);
+  });
 });
 
 describe("unsupportedDraftParts", () => {

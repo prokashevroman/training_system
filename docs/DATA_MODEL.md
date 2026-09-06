@@ -78,6 +78,7 @@ erDiagram
         activity_modality modality
         training_objective objective
         numeric distance_km
+        numeric avg_pace_seconds_per_km
     }
 
     strength_sets {

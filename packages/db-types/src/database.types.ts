@@ -31,6 +31,7 @@ export type Database = {
       activities: {
         Row: {
           avg_heart_rate_bpm: number | null;
+          avg_pace_seconds_per_km: number | null;
           avg_power_watts: number | null;
           cadence_spm: number | null;
           calories: number | null;
@@ -55,6 +56,7 @@ export type Database = {
         };
         Insert: {
           avg_heart_rate_bpm?: number | null;
+          avg_pace_seconds_per_km?: number | null;
           avg_power_watts?: number | null;
           cadence_spm?: number | null;
           calories?: number | null;
@@ -79,6 +81,7 @@ export type Database = {
         };
         Update: {
           avg_heart_rate_bpm?: number | null;
+          avg_pace_seconds_per_km?: number | null;
           avg_power_watts?: number | null;
           cadence_spm?: number | null;
           calories?: number | null;
