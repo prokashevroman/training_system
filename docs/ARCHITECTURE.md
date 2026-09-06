@@ -11,9 +11,12 @@ seams left for them.
 
 The workbook import is entirely deterministic and calls no model: text it
 cannot parse is flagged for review, never guessed. The Worker added in Phase 4
-returns drafts only — it holds no service-role key and cannot write to the
-database, so an approved draft always travels through RLS-protected APIs from
-the browser.
+returns only text — a Whisper transcript, and since 2026-09 an optional rewrite
+of chaotic entry text into the parser's line notation (`/v1/normalizations`).
+Structure is produced exclusively by the shared deterministic parser running in
+the browser over that text. The Worker holds no service-role key and cannot
+write to the database, so everything that persists travels through
+RLS-protected APIs from the browser.
 
 ## Layout
 

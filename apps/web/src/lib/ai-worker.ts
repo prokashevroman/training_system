@@ -3,20 +3,26 @@ import { supabase } from "./supabase.js";
 /**
  * Client for the Cloudflare Worker.
  *
- * The Worker does exactly one thing now: turn a recording into text. It never
- * writes to Supabase — the browser shows the transcript, the athlete confirms
- * it, and the save goes through the normal RLS-protected API. There is no
- * parsing model behind this call, so its latency is Whisper's and nothing else.
+ * The Worker turns audio into a transcript and chaotic text into parser
+ * notation — text out in both cases, never structured training data. It never
+ * writes to Supabase: the browser parses and shows the text, the athlete
+ * confirms it, and the save goes through the normal RLS-protected API.
  *
  * `VITE_AI_WORKER_URL` is optional. When it is unset the app is fully usable
- * without voice: manual entry, history, editing and export all keep working,
- * and the record screen says so rather than failing at the point of use.
+ * without voice or AI tidying: manual entry, paste, history, editing and export
+ * all keep working, and the record screen says so rather than failing at the
+ * point of use.
  */
 
 export const AI_WORKER_URL: string | null = import.meta.env.VITE_AI_WORKER_URL?.trim() || null;
 
-export function isVoiceConfigured(): boolean {
+export function isWorkerConfigured(): boolean {
   return AI_WORKER_URL !== null;
+}
+
+/** Voice availability is worker availability; the alias keeps call sites honest. */
+export function isVoiceConfigured(): boolean {
+  return isWorkerConfigured();
 }
 
 export interface WorkerErrorBody {
@@ -103,4 +109,43 @@ export async function transcribe(recording: {
     );
   }
   return body.transcript;
+}
+
+export interface NormalizedEntry {
+  /** Rewrite of the text in parser line notation. Text, never a draft. */
+  notation: string;
+  /** `YYYY-MM-DD` when the text states when the work happened, else null. */
+  localDate: string | null;
+}
+
+/**
+ * `POST /v1/normalizations`: chaotic text in, parser notation out.
+ *
+ * The response is only ever *parsed*, never saved: the deterministic parser
+ * turns it into a draft in the preview, where warnings and unconsumed lines
+ * stay visible, and `raw_text` keeps the athlete's original words regardless.
+ */
+export async function normalizeEntry(
+  text: string,
+  todayLocalDate: string,
+): Promise<NormalizedEntry> {
+  const response = await fetch(`${requireUrl()}/v1/normalizations`, {
+    method: "POST",
+    headers: { authorization: await authHeader(), "content-type": "application/json" },
+    body: JSON.stringify({ text, todayLocalDate }),
+  });
+  const body = (await unwrap(response)) as { notation?: unknown; localDate?: unknown };
+  if (typeof body.notation !== "string" || body.notation.trim() === "") {
+    throw new WorkerError(
+      { code: "upstream_error", message: "The Worker returned no rewrite." },
+      200,
+    );
+  }
+  return {
+    notation: body.notation,
+    localDate:
+      typeof body.localDate === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.localDate)
+        ? body.localDate
+        : null,
+  };
 }

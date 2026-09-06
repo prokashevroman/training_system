@@ -1,5 +1,9 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { parseCell } from "@training/import-workbook/parse";
+import { normalizeEntry, type NormalizedEntry } from "./ai-worker.js";
+
+// Re-exported for the form: components reach the domain only through lib/.
+export { extractLeadingDate } from "../../../../packages/domain/src/entry-date.js";
 import type { SessionDraft } from "../../../../packages/domain/src/session.js";
 import type { StrengthSetDraft } from "../../../../packages/domain/src/strength.js";
 import type { ParseWarning } from "../../../../packages/domain/src/warnings.js";
@@ -41,6 +45,20 @@ import { supabase } from "./supabase.js";
 /** The parser wants a cell locator; a paste has none, so this stands in. */
 const PASTE_SHEET = "paste";
 
+/**
+ * How the text being parsed entered the system. The default is a hand paste;
+ * the voice flow hands its transcript over with `source: "voice"` so the saved
+ * session still says how the record really arrived, and `rawText` always
+ * carries the *entry* — the transcript or the pre-tidy paste — never a rewrite.
+ */
+export interface EntryOrigin {
+  source: "manual" | "voice";
+  /** The verbatim entry text that `raw_text` must preserve. */
+  rawText: string;
+  /** The Whisper transcript, for voice-originated entries only. */
+  transcript: string | null;
+}
+
 export interface PastedSession {
   /** Editable before saving; seeded from the parser's own title. */
   title: string;
@@ -73,6 +91,11 @@ export function newPasteRequestKey(): string {
   return `paste:${crypto.randomUUID()}`;
 }
 
+/** Same contract, `voice:` prefixed, for transcripts structured via this flow. */
+export function newEntryBatchKey(source: EntryOrigin["source"]): string {
+  return source === "voice" ? `voice:${crypto.randomUUID()}` : newPasteRequestKey();
+}
+
 function sessionRequestKey(batchKey: string, ordinal: number): string {
   return `${batchKey}:${ordinal}`;
 }
@@ -91,8 +114,19 @@ function shortTitle(title: string): string {
 /**
  * Parses pasted text into session drafts. Pure and synchronous: the preview
  * re-runs it on every keystroke.
+ *
+ * `origin` defaults to a plain manual paste of exactly this text. It diverges
+ * when the text being parsed is not the text that entered the system: an AI
+ * rewrite is parsed while `raw_text` keeps the pre-tidy original, and a voice
+ * transcript keeps `source: "voice"` plus the transcript column.
  */
-export function parsePastedText(text: string, localDate: string, batchKey: string): PastedParse {
+export function parsePastedText(
+  text: string,
+  localDate: string,
+  batchKey: string,
+  origin?: EntryOrigin,
+): PastedParse {
+  const provenance: EntryOrigin = origin ?? { source: "manual", rawText: text, transcript: null };
   if (text.trim() === "") {
     return {
       sessions: [],
@@ -116,23 +150,25 @@ export function parsePastedText(text: string, localDate: string, batchKey: strin
     title: shortTitle(session.title),
     draft: {
       ...session,
-      // The parser stamps the import provenance it was written for. A paste is
-      // hand-entered, and `session_source` must keep saying how the record
-      // really entered the system.
-      source: "manual" as const,
+      // The parser stamps the import provenance it was written for.
+      // `session_source` must keep saying how the record really entered the
+      // system: hand-entered, or spoken and transcribed.
+      source: provenance.source,
+      transcript: provenance.transcript,
       clientRequestKey: sessionRequestKey(batchKey, index + 1),
       // The parser normalizes before splitting — `97,5` becomes `97.5`, `×`
       // becomes `x`, CRLF becomes LF, runs of spaces collapse — and each
       // draft's `rawText` is the *normalized* slice. `raw_text` is the column
       // the schema promises every record stays re-derivable from, so it gets
-      // the bytes actually typed.
+      // the bytes the athlete actually entered — the pre-tidy original when an
+      // AI rewrite is being parsed, never the rewrite itself.
       //
       // Every session from one paste therefore carries the whole paste. That
       // is deliberate: recovering an exact per-session slice would mean
       // mapping normalized lines back to original ones, and `extractCommutes`
       // reorders lines across units, so the mapping would be a guess. A
       // superset is recoverable; a wrong slice is not.
-      rawText: text,
+      rawText: provenance.rawText,
     },
   }));
 
@@ -306,5 +342,18 @@ export function useSavePastedSessions() {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.sessions });
     },
+  });
+}
+
+/**
+ * The one model call in this flow, and it returns *text*: a rewrite of chaotic
+ * entry into the notation the deterministic parser reads. The rewrite replaces
+ * what is being parsed, never what is being stored — `raw_text` keeps the
+ * athlete's original words, and the preview shows exactly what the parser made
+ * of the rewrite before anything can be saved.
+ */
+export function useNormalizeEntry() {
+  return useMutation<NormalizedEntry, Error, { text: string; todayLocalDate: string }>({
+    mutationFn: ({ text, todayLocalDate }) => normalizeEntry(text, todayLocalDate),
   });
 }

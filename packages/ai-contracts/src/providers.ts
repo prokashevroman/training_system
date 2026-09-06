@@ -32,10 +32,30 @@ export interface SpeechToTextProvider {
   transcribe(input: AudioInput): Promise<TranscriptResult>;
 }
 
+/** Free-form entry text handed to a normalizer. Never logged, never persisted. */
+export interface NormalizeInput {
+  readonly text: string;
+  /** `YYYY-MM-DD` in the athlete's timezone, for resolving relative dates. */
+  readonly todayLocalDate: string;
+}
+
+export interface NormalizationResult {
+  /** Rewrite of the text in parser line notation. Text, never a draft. */
+  readonly notation: string;
+  /** `YYYY-MM-DD` when the text states when the work happened, else null. */
+  readonly localDate: string | null;
+  readonly metadata: ModelMetadata;
+}
+
+export interface TextNormalizerProvider {
+  normalize(input: NormalizeInput): Promise<NormalizationResult>;
+}
+
 /** The provider set as resolved once per request. */
 export interface AiProviderSet {
   readonly name: string;
   readonly speechToText: SpeechToTextProvider;
+  readonly textNormalizer: TextNormalizerProvider;
 }
 
 /** Narrow helper so implementations build metadata consistently. */

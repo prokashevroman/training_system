@@ -5,18 +5,23 @@ import { newVoiceRequestKey, useSaveVoiceSession } from "../../lib/record-querie
 import { voiceSessionTitle } from "../../lib/voice-title.js";
 
 /**
- * The one tap between a transcript and the database.
+ * The tap between a transcript and the database.
  *
- * Replaces the old AI draft review. There is nothing to second-guess any more —
- * the text on screen is exactly what will be stored, so the review is just:
- * read it, fix anything Whisper misheard, save.
+ * The text on screen is exactly what enters the system, so the review is:
+ * read it, fix anything Whisper misheard, then either structure it into
+ * sessions and sets (the default path — it goes through the same parser
+ * preview as pasted text, and the transcript is stored verbatim alongside) or
+ * save it as a plain note.
  */
 export function TranscriptConfirm({
   transcript,
+  onStructure,
   onDone,
   onDiscard,
 }: {
   transcript: string;
+  /** Hands the (possibly corrected) transcript to the structured-entry flow. */
+  onStructure: (text: string) => void;
   onDone: () => void;
   onDiscard: () => void;
 }) {
@@ -55,8 +60,8 @@ export function TranscriptConfirm({
       <header>
         <h1 className="text-xl font-semibold">Check the transcript</h1>
         <p className="text-sm text-slate-400">
-          This exact text becomes the session for {localDate}. Fix anything that was misheard,
-          then save.
+          Fix anything that was misheard, then structure it into sets — or save this exact text as
+          a plain note for {localDate}.
         </p>
       </header>
 
@@ -85,14 +90,22 @@ export function TranscriptConfirm({
         </p>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          disabled={save.isPending || text.trim() === ""}
+          onClick={() => onStructure(text)}
+          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+        >
+          Structure into sets
+        </button>
         <button
           type="button"
           disabled={save.isPending || text.trim() === ""}
           onClick={() => save.mutate({ transcript: text, title, localDate, requestKey })}
-          className="rounded-lg bg-sky-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+          className="rounded-lg border border-slate-700 px-4 py-2 text-sm text-slate-300 disabled:opacity-50"
         >
-          {save.isPending ? "Saving…" : "Save"}
+          {save.isPending ? "Saving…" : "Save as note"}
         </button>
         <button
           type="button"

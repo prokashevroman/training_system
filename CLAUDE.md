@@ -92,9 +92,11 @@ green and should stay that way.
 > The database stores facts. Deterministic code enforces rules. The LLM interprets and
 > transcribes — and never writes unvalidated data.
 
-Concretely: the workbook import calls no model at all, and the Worker returns a
-transcript only. It holds no service-role key and cannot reach the database, so
-everything that persists travels from the browser through RLS-protected APIs.
+Concretely: the workbook import calls no model at all, and the Worker returns only
+text — a transcript, or a notation rewrite of chaotic entry text that the browser
+re-parses with the deterministic parser before anything is shown or saved. It holds
+no service-role key and cannot reach the database, so everything that persists
+travels from the browser through RLS-protected APIs.
 
 ## Architecture
 
@@ -106,7 +108,7 @@ packages/domain/          Zod schemas, enums, units, workbook date math. Pure, n
 packages/ai-contracts/    Worker request/response schemas, error codes, limits. No Cloudflare types.
 packages/db-types/        Generated Supabase row types (`supabase gen types`).
 apps/web/                 Vite + React 19 + Tailwind PWA. React Query + supabase-js.
-apps/ai-worker/           Cloudflare Worker. One route: POST /v1/transcriptions.
+apps/ai-worker/           Cloudflare Worker. POST /v1/transcriptions + /v1/normalizations.
 scripts/import-workbook/  Python extract (openpyxl) -> TypeScript parse/apply.
 ```
 
@@ -172,20 +174,38 @@ Two things worth knowing:
 ### Paste entry reuses the importer's parser
 
 The Record screen has a third mode beside voice and the manual form: paste spreadsheet
-notation (`Seated cable row, 3x10 (45kg)`) and get structured rows. It calls
+notation (`Seated cable row, 3x10 (45kg)`) and get structured rows. The voice flow's
+"Structure into sets" lands in this same form. It calls
 `parseCell` from `@training/import-workbook/parse` — the _same_ deterministic parser
 the workbook import runs, exposed through that package's `exports` map so only the pure
 entry point is reachable from the browser. No model, no network.
 
-`apps/web/src/lib/paste-queries.ts` rewrites three fields on the parser's output and
-nothing else: `source` becomes `manual` (the parser stamps `excel_import`),
-`clientRequestKey` becomes `paste:{uuid}:{ordinal}`, and `rawText` becomes the
-**original pasted bytes**. That last one matters — `parseCell` normalizes before
-splitting (`97,5`→`97.5`, `×`→`x`, CRLF→LF, runs of spaces collapsed) and each draft's
-`rawText` is the normalized slice, but `raw_text` is the column the schema promises
-every record stays re-derivable from. Every session from one paste carries the whole
-paste, because `extractCommutes` reorders lines across units, so an exact per-session
-slice would be a guess.
+`apps/web/src/lib/paste-queries.ts` rewrites four fields on the parser's output and
+nothing else, driven by an `EntryOrigin` (`manual` paste vs a handed-over `voice`
+transcript): `source` (the parser stamps `excel_import`), `transcript`,
+`clientRequestKey` (`paste:{uuid}:{ordinal}` or `voice:{uuid}:{ordinal}`), and
+`rawText`, which becomes the **verbatim entry** — the original pasted bytes, or the
+pre-tidy text when the AI rewrite ran. That last one matters — `parseCell` normalizes
+before splitting (`97,5`→`97.5`, `×`→`x`, CRLF→LF, runs of spaces collapsed) and each
+draft's `rawText` is the normalized slice, but `raw_text` is the column the schema
+promises every record stays re-derivable from. Every session from one paste carries the
+whole paste, because `extractCommutes` reorders lines across units, so an exact
+per-session slice would be a guess.
+
+Two things happen to the text before `parseCell` sees it, both visible in the UI:
+
+- `extractLeadingDate` (`packages/domain/src/entry-date.ts`) lifts a leading `31.08:`
+  into the date field — day-first, yearless dates resolve to the most recent past —
+  so a date line never becomes a junk `other` activity. The full original, date line
+  included, still lands in `raw_text`.
+- "Tidy with AI" (optional, needs `VITE_AI_WORKER_URL`) sends the text to
+  `/v1/normalizations` and replaces the **editable box** with the returned notation.
+  It never replaces `raw_text`, and there is an Undo. The rewrite is re-parsed like
+  any other text; a session with no unconsumed lines never needs it.
+
+The one-off `scripts/import-workbook/src/tools/restructure-session.ts` applies the same
+parse to an already-saved unstructured session in place (same row, same key, `raw_text`
+untouched); dry-run by default, `--apply` to write.
 
 From there it is an ordinary `SessionDraft`, so `buildInsertBundle` +
 `insertSessionBundle` write it exactly as manual entry does. Warnings and
@@ -209,19 +229,25 @@ own. Product copy has to match that, not the other way round.
 Adding a set-notation form to the parser therefore improves both the importer and the
 app. Don't fork a second parser into `apps/web`.
 
-### Voice flow (transcript-only — deliberately)
+### Voice flow (text-only Worker — deliberately)
 
 Recording → `POST /v1/transcriptions` (Whisper) → editable transcript in the browser →
-one-tap save into `workout_sessions` with `source='voice'` and the transcript verbatim
-in `raw_text`. Typed text skips the network entirely.
+either **Structure into sets** (default: the transcript enters the paste flow below,
+with `source='voice'` and the transcript verbatim in both `raw_text` and `transcript`)
+or **Save as note** (the old one-tap save, no children). Typed text skips the network
+entirely.
 
-The LLM workout parser and planner were **removed** in Aug 2026 as a product decision.
-Do not reintroduce model-based parsing of workout prose without being asked. The Worker
+The LLM workout **parser** (model → JSON draft) and planner were removed in Aug 2026 as
+a product decision and stay removed. What was added back in Sep 2026, on request, is
+narrower: `POST /v1/normalizations` rewrites chaotic entry text into the workbook line
+notation — **text in, text out**. The model never emits structured data; the browser
+runs `parseCell` over the rewrite, the preview shows warnings/unconsumed lines, and
+`raw_text` keeps the athlete's original words (the rewrite is never stored). The Worker
 pipeline order in `apps/ai-worker/src/app.ts` (request id → CORS → route → bearer
 verification → rate limit → provider → handler) is the security contract; keep it.
 
-`VITE_AI_WORKER_URL` is optional: unset means voice is off and the rest of the app
-works, which `e2e/history.spec.ts` asserts.
+`VITE_AI_WORKER_URL` is optional: unset means voice and "Tidy with AI" are off and the
+rest of the app works, which `e2e/history.spec.ts` asserts.
 
 ### Ambiguity produces warnings, not values
 

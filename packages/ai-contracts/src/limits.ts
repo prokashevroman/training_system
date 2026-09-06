@@ -10,6 +10,10 @@ export const AI_LIMITS = {
   maxAudioBytes: 10 * 1024 * 1024,
   /** Brief section 7.1: app-level recording cap of five minutes. */
   maxAudioDurationSeconds: 300,
+  /** Text sent for notation rewriting; ~4x the longest real entry to date. */
+  maxNormalizeTextChars: 12000,
+  /** Any JSON request body. Far above maxNormalizeTextChars to leave envelope room. */
+  maxJsonBodyBytes: 128 * 1024,
 } as const;
 
 export type AiLimits = typeof AI_LIMITS;

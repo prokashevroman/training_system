@@ -25,6 +25,7 @@ export interface WorkerEnv {
   readonly AI?: AiBinding;
   readonly AI_PROVIDER?: string;
   readonly STT_MODEL?: string;
+  readonly NORMALIZER_MODEL?: string;
   readonly ALLOWED_ORIGINS?: string;
   readonly SUPABASE_URL?: string;
   readonly SUPABASE_JWKS_URL?: string;
@@ -33,6 +34,8 @@ export interface WorkerEnv {
   readonly SUPABASE_JWT_SECRET?: string;
   readonly MAX_AUDIO_BYTES?: string;
   readonly MAX_AUDIO_SECONDS?: string;
+  readonly MAX_TEXT_CHARS?: string;
+  readonly MAX_JSON_BODY_BYTES?: string;
   readonly RATE_LIMIT_PER_MINUTE?: string;
   readonly LOG_LEVEL?: string;
 }
@@ -43,12 +46,13 @@ export interface WorkerConfig {
   /** `mock` unless explicitly set, so tests and previews never call out. */
   readonly provider: ProviderName;
   /**
-   * The configured transcription model ID. Null when unset: the Cloudflare
-   * provider then refuses to run rather than falling back to a hard-coded ID,
-   * because a silently wrong model is worse than a clear configuration error.
+   * The configured model IDs. Null when unset: the Cloudflare provider then
+   * refuses to run rather than falling back to a hard-coded ID, because a
+   * silently wrong model is worse than a clear configuration error.
    */
   readonly models: {
     readonly stt: string | null;
+    readonly normalizer: string | null;
   };
   readonly allowedOrigins: readonly string[];
   readonly supabaseUrl: string | null;
@@ -58,6 +62,8 @@ export interface WorkerConfig {
   readonly limits: {
     readonly maxAudioBytes: number;
     readonly maxAudioSeconds: number;
+    readonly maxTextChars: number;
+    readonly maxJsonBodyBytes: number;
   };
   readonly rateLimitPerMinute: number;
   readonly logLevel: "debug" | "info";
@@ -92,6 +98,7 @@ export function resolveConfig(env: WorkerEnv): WorkerConfig {
     provider,
     models: {
       stt: trimmedOrNull(env.STT_MODEL),
+      normalizer: trimmedOrNull(env.NORMALIZER_MODEL),
     },
     allowedOrigins: parseAllowedOrigins(env.ALLOWED_ORIGINS),
     supabaseUrl,
@@ -105,6 +112,8 @@ export function resolveConfig(env: WorkerEnv): WorkerConfig {
     limits: {
       maxAudioBytes: positiveInt(env.MAX_AUDIO_BYTES, AI_LIMITS.maxAudioBytes),
       maxAudioSeconds: positiveInt(env.MAX_AUDIO_SECONDS, AI_LIMITS.maxAudioDurationSeconds),
+      maxTextChars: positiveInt(env.MAX_TEXT_CHARS, AI_LIMITS.maxNormalizeTextChars),
+      maxJsonBodyBytes: positiveInt(env.MAX_JSON_BODY_BYTES, AI_LIMITS.maxJsonBodyBytes),
     },
     rateLimitPerMinute: positiveInt(env.RATE_LIMIT_PER_MINUTE, 30),
     logLevel: trimmedOrNull(env.LOG_LEVEL) === "debug" ? "debug" : "info",

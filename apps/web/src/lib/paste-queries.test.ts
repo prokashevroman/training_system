@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   applyPasteEdits,
+  extractLeadingDate,
   groupSetsForPreview,
+  newEntryBatchKey,
   newPasteRequestKey,
   parsePastedText,
 } from "./paste-queries.js";
@@ -92,8 +94,25 @@ describe("parsePastedText", () => {
   it("records the paste as manually entered, not as an import", () => {
     const draft = parse().sessions[0]!.draft;
     expect(draft.source).toBe("manual");
+    expect(draft.transcript).toBeNull();
     expect(draft.clientRequestKey).toBe(`${KEY}:1`);
     expect(draft.localDate).toBe(DATE);
+  });
+
+  it("keeps voice provenance and the transcript when an origin is supplied", () => {
+    // The structured-voice flow parses a rewrite while `raw_text` must keep the
+    // transcript that actually entered the system.
+    const transcript = "did the cable rows, three by ten at forty five";
+    const result = parsePastedText("Seated cable row, 3x10 (45kg)", DATE, "voice:key", {
+      source: "voice",
+      rawText: transcript,
+      transcript,
+    });
+    const draft = result.sessions[0]!.draft;
+    expect(draft.source).toBe("voice");
+    expect(draft.rawText).toBe(transcript);
+    expect(draft.transcript).toBe(transcript);
+    expect(draft.activities[0]!.strengthSets).toHaveLength(3);
   });
 
   it("keeps the pasted text verbatim so an unread line is never lost", () => {
@@ -242,9 +261,39 @@ describe("assertExerciseLinksResolvable", () => {
   });
 });
 
+describe("date-prefixed entries", () => {
+  it("moves a leading `31.08:` into the date and parses the rest", () => {
+    // The exact shape of the real 31.08 voice entry: date line, blank line,
+    // then workbook notation. The date line is not training and must not
+    // produce a junk activity.
+    const entered = `31.08: \n\n${SESSION}`;
+    const dated = extractLeadingDate(entered, "2026-09-06");
+    expect(dated.localDate).toBe("2026-08-31");
+
+    const result = parsePastedText(dated.rest, dated.localDate!, KEY, {
+      source: "voice",
+      rawText: entered,
+      transcript: entered,
+    });
+    expect(result.sessions).toHaveLength(1);
+    expect(result.unconsumedLines).toEqual([]);
+    const draft = result.sessions[0]!.draft;
+    expect(draft.localDate).toBe("2026-08-31");
+    expect(draft.activities).toHaveLength(1);
+    expect(draft.activities[0]!.strengthSets).toHaveLength(16);
+    // The date line survives in raw_text even though the parser never saw it.
+    expect(draft.rawText.startsWith("31.08:")).toBe(true);
+  });
+});
+
 describe("newPasteRequestKey", () => {
   it("is prefixed so provenance stays readable in the database", () => {
     expect(newPasteRequestKey()).toMatch(/^paste:[0-9a-f-]{36}$/);
+  });
+
+  it("prefixes voice-originated batches as voice, per the key contract", () => {
+    expect(newEntryBatchKey("voice")).toMatch(/^voice:[0-9a-f-]{36}$/);
+    expect(newEntryBatchKey("manual")).toMatch(/^paste:[0-9a-f-]{36}$/);
   });
 });
 

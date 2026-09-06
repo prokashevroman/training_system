@@ -1,6 +1,7 @@
 import {
   AiErrorResponseSchema,
   HealthResponseSchema,
+  NormalizeResponseSchema,
   TranscribeResponseSchema,
 } from "@training/ai-contracts";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -62,19 +63,22 @@ describe("GET /health", () => {
     const body = HealthResponseSchema.parse(await response.json());
     expect(body.provider).toBe("mock");
     expect(body.models.stt).toBe("mock-stt-v1");
+    expect(body.models.normalizer).toBe("mock-normalizer-v1");
     expect(response.headers.get("x-request-id")).toBe(body.requestId);
   });
 
-  it("reports the configured Cloudflare model ID verbatim", async () => {
+  it("reports the configured Cloudflare model IDs verbatim", async () => {
     const env = createEnv({
       AI_PROVIDER: "cloudflare",
       STT_MODEL: "@cf/openai/whisper-large-v3-turbo",
+      NORMALIZER_MODEL: "@cf/meta/llama-4-scout-17b-16e-instruct",
       AI: fakeAi([]),
     });
     const response = await handleRequest(buildRequest("/health", { origin: null }), env);
     const body = HealthResponseSchema.parse(await response.json());
     expect(body.provider).toBe("cloudflare");
     expect(body.models.stt).toBe("@cf/openai/whisper-large-v3-turbo");
+    expect(body.models.normalizer).toBe("@cf/meta/llama-4-scout-17b-16e-instruct");
   });
 
   it("fails clearly when the provider is cloudflare but the model is unset", async () => {
@@ -203,6 +207,93 @@ describe("POST /v1/transcriptions", () => {
     const second = await handleRequest(postAudio(audioForm()), env);
     expect(second.status).toBe(429);
     expect((await readError(second)).code).toBe("rate_limited");
+  });
+});
+
+describe("POST /v1/normalizations", () => {
+  const NORMALIZE_PATH = "/v1/normalizations";
+
+  function postText(body: unknown, options: { token?: string | null } = {}): Request {
+    return buildRequest(NORMALIZE_PATH, {
+      method: "POST",
+      token: options.token === undefined ? token : options.token,
+      body: JSON.stringify(body),
+    });
+  }
+
+  const validBody = {
+    text: "did squats three by five at hundred kilos, then biked to work",
+    todayLocalDate: "2026-09-06",
+  };
+
+  it("rejects a request with no Authorization header", async () => {
+    const response = await handleRequest(postText(validBody, { token: null }), createEnv());
+    expect(response.status).toBe(401);
+    expect((await readError(response)).code).toBe("unauthorized");
+  });
+
+  it("rewrites text through the mock provider, echoing it verbatim", async () => {
+    const response = await handleRequest(postText(validBody), createEnv());
+    expect(response.status).toBe(200);
+    const body = NormalizeResponseSchema.parse(await response.json());
+    expect(body.notation).toBe(validBody.text);
+    expect(body.localDate).toBeNull();
+    expect(body.normalization.provider).toBe("mock");
+  });
+
+  it("rejects a non-JSON content type", async () => {
+    const request = buildRequest(NORMALIZE_PATH, {
+      method: "POST",
+      token,
+      body: "just some text",
+      contentType: "text/plain",
+    });
+    const response = await handleRequest(request, createEnv());
+    expect(response.status).toBe(422);
+    expect((await readError(response)).code).toBe("schema_invalid");
+  });
+
+  it("rejects a body that is not valid JSON", async () => {
+    const request = buildRequest(NORMALIZE_PATH, { method: "POST", token, body: "{not json" });
+    const response = await handleRequest(request, createEnv());
+    expect(response.status).toBe(422);
+  });
+
+  it("rejects empty text and a malformed date at schema level", async () => {
+    for (const body of [
+      { text: "", todayLocalDate: "2026-09-06" },
+      { text: "squats", todayLocalDate: "06.09.2026" },
+      { text: "squats" },
+    ]) {
+      const response = await handleRequest(postText(body), createEnv());
+      expect(response.status).toBe(422);
+      expect((await readError(response)).code).toBe("schema_invalid");
+    }
+  });
+
+  it("rejects text longer than the configured limit", async () => {
+    const env = createEnv({ MAX_TEXT_CHARS: "10" });
+    const response = await handleRequest(
+      postText({ ...validBody, text: "a".repeat(11) }),
+      env,
+    );
+    expect(response.status).toBe(413);
+    expect((await readError(response)).code).toBe("payload_too_large");
+  });
+
+  it("rejects a body larger than the JSON byte limit before reading it", async () => {
+    const env = createEnv({ MAX_JSON_BODY_BYTES: "64" });
+    const response = await handleRequest(postText(validBody), env);
+    expect(response.status).toBe(413);
+    expect((await readError(response)).code).toBe("payload_too_large");
+  });
+
+  it("shares the per-user rate limit with transcriptions", async () => {
+    const env = createEnv({ RATE_LIMIT_PER_MINUTE: "1" });
+    const first = await handleRequest(postText(validBody), env);
+    expect(first.status).toBe(200);
+    const second = await handleRequest(postAudio(audioForm()), env);
+    expect(second.status).toBe(429);
   });
 });
 

@@ -1,5 +1,6 @@
 import type { WorkerConfig, WorkerEnv } from "../../env.js";
 import type { WorkerProviders } from "../types.js";
+import { CloudflareTextNormalizer } from "./normalizer.js";
 import { CloudflareSpeechToText } from "./stt.js";
 import { requireBinding, requireModel } from "./workers-ai.js";
 
@@ -14,10 +15,12 @@ export function createCloudflareProviders(
 ): WorkerProviders {
   const ai = requireBinding(env.AI);
   const stt = requireModel(config.models.stt, "STT_MODEL");
+  const normalizer = requireModel(config.models.normalizer, "NORMALIZER_MODEL");
 
   return {
     name: "cloudflare",
     speechToText: new CloudflareSpeechToText(ai, stt, requestId),
-    models: { stt },
+    textNormalizer: new CloudflareTextNormalizer(ai, normalizer, requestId),
+    models: { stt, normalizer },
   };
 }

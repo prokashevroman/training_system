@@ -1,17 +1,19 @@
 import { z } from "zod";
 import { AI_LIMITS } from "./limits.js";
-import { TranscriptionMetadataSchema } from "./metadata.js";
+import { ModelMetadataSchema, TranscriptionMetadataSchema } from "./metadata.js";
 
 /**
  * Wire schemas for the AI Worker.
  *
- * One job: turn a recording into text. No request carries a user id — the
- * Worker derives it from the verified bearer token, so a `userId` field would
- * be a lie the server would have to ignore.
+ * Two jobs, both text-out: turn a recording into a transcript, and rewrite a
+ * chaotic entry into the line notation the deterministic parser reads. No
+ * request carries a user id — the Worker derives it from the verified bearer
+ * token, so a `userId` field would be a lie the server would have to ignore.
  *
- * The transcript is the product. Structuring it into sessions and sets is the
- * athlete's edit, done in the browser against their own RLS-protected rows;
- * no model is ever asked to guess reps out of prose.
+ * Neither response is structured training data. The browser runs the shared
+ * deterministic parser over the text, shows the result for review, and saves
+ * through the athlete's own RLS-protected rows; no model output is ever
+ * persisted unvalidated.
  */
 
 /** The non-audio half of a transcription request: the `meta` multipart field. */
@@ -40,6 +42,35 @@ export const TranscribeResponseSchema = z.object({
 });
 export type TranscribeResponse = z.infer<typeof TranscribeResponseSchema>;
 
+/** `YYYY-MM-DD`. Local copy: the contracts package deliberately has no domain dep. */
+export const ApiLocalDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * `POST /v1/normalizations`. Free-form entry text in, parser notation out.
+ *
+ * `todayLocalDate` comes from the client because "yesterday" only resolves in
+ * the athlete's timezone, which the Worker does not know.
+ */
+export const NormalizeRequestSchema = z.object({
+  text: z.string().min(1).max(AI_LIMITS.maxNormalizeTextChars),
+  todayLocalDate: ApiLocalDateSchema,
+});
+export type NormalizeRequest = z.infer<typeof NormalizeRequestSchema>;
+
+/**
+ * The rewrite is *text*, not a draft: structure is produced by the shared
+ * deterministic parser in the browser, where every ambiguity still becomes a
+ * visible warning instead of a value.
+ */
+export const NormalizeResponseSchema = z.object({
+  /** Line notation for the deterministic parser. Never empty. */
+  notation: z.string().min(1),
+  /** The date the text states the work happened, when it states one. */
+  localDate: ApiLocalDateSchema.nullable(),
+  normalization: ModelMetadataSchema,
+});
+export type NormalizeResponse = z.infer<typeof NormalizeResponseSchema>;
+
 /** `GET /health`. Reports configuration, never secrets. */
 export const HealthResponseSchema = z.object({
   status: z.literal("ok"),
@@ -48,6 +79,7 @@ export const HealthResponseSchema = z.object({
   /** Configured model IDs, so a deploy can be checked without a token. */
   models: z.object({
     stt: z.string().min(1),
+    normalizer: z.string().min(1),
   }),
   requestId: z.string().min(1),
 });

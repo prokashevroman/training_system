@@ -83,16 +83,33 @@ describe("createCloudflareProviders", () => {
     expect(() => createCloudflareProviders(env, resolveConfig(env), "req_1")).toThrow(/binding/);
   });
 
-  it("passes the configured model ID straight through", () => {
+  it("refuses to run when only the normalizer model is missing", () => {
     const env = createEnv({
       AI_PROVIDER: "cloudflare",
       STT_MODEL: "@cf/openai/whisper-large-v3-turbo",
+      AI: fakeAi([]),
+    });
+    try {
+      createCloudflareProviders(env, resolveConfig(env), "req_1");
+      expect.unreachable("expected a configuration error");
+    } catch (error) {
+      expect((error as AiHttpError).code).toBe("upstream_error");
+      expect((error as AiHttpError).message).toContain("NORMALIZER_MODEL");
+    }
+  });
+
+  it("passes the configured model IDs straight through", () => {
+    const env = createEnv({
+      AI_PROVIDER: "cloudflare",
+      STT_MODEL: "@cf/openai/whisper-large-v3-turbo",
+      NORMALIZER_MODEL: "@cf/meta/llama-4-scout-17b-16e-instruct",
       AI: fakeAi([]),
     });
     const providers = createCloudflareProviders(env, resolveConfig(env), "req_1");
     expect(providers.name).toBe("cloudflare");
     expect(providers.models).toEqual({
       stt: "@cf/openai/whisper-large-v3-turbo",
+      normalizer: "@cf/meta/llama-4-scout-17b-16e-instruct",
     });
   });
 });

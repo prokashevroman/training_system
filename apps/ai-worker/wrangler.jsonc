@@ -20,15 +20,20 @@
     // Cloudflare account and makes no network calls.
     "AI_PROVIDER": "cloudflare",
 
-    // The one model this Worker calls. Model IDs are configuration, never
-    // business logic — change it here when Cloudflare's catalogue moves.
-    // `GET /health` echoes whatever is configured, so a mismatch is visible
-    // immediately.
+    // Model IDs are configuration, never business logic — change them here when
+    // Cloudflare's catalogue moves. `GET /health` echoes whatever is
+    // configured, so a mismatch is visible immediately.
     //
-    // There is deliberately no parser or planner model any more: the Worker
-    // only transcribes. What a recording means is decided by the athlete in
-    // the browser, not by an LLM guessing reps out of prose.
+    // The normalizer rewrites chaotic entry text into the line notation the
+    // deterministic parser reads — text in, text out. It never returns
+    // structured training data: the browser parses the notation itself, so an
+    // LLM still cannot put a number in the database that the parser did not
+    // read. The model must be NON-REASONING (a `<think>` preamble breaks JSON
+    // parsing and costs a silent second call); Scout answered comparable
+    // prompts in 3-15s at equal quality to the 70b when it served the old
+    // parser, measured live 2026-08-06.
     "STT_MODEL": "@cf/openai/whisper-large-v3-turbo",
+    "NORMALIZER_MODEL": "@cf/meta/llama-4-scout-17b-16e-instruct",
 
     // Comma-separated CORS allowlist. Replace with the deployed PWA origin.
     "ALLOWED_ORIGINS": "http://localhost:5173,http://127.0.0.1:5173,https://training-system-web-rose.vercel.app/",
@@ -47,6 +52,8 @@
     // in @training/ai-contracts.
     "MAX_AUDIO_BYTES": "10485760",
     "MAX_AUDIO_SECONDS": "300",
+    "MAX_TEXT_CHARS": "12000",
+    "MAX_JSON_BODY_BYTES": "131072",
     "RATE_LIMIT_PER_MINUTE": "30",
   },
   // --- Secrets ---------------------------------------------------------------

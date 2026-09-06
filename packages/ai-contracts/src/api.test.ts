@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { HealthResponseSchema, TranscribeMetaSchema, TranscribeResponseSchema } from "./api.js";
+import {
+  HealthResponseSchema,
+  NormalizeRequestSchema,
+  NormalizeResponseSchema,
+  TranscribeMetaSchema,
+  TranscribeResponseSchema,
+} from "./api.js";
 import { AI_LIMITS } from "./limits.js";
 
 describe("TranscribeMetaSchema", () => {
@@ -65,15 +71,85 @@ describe("TranscribeResponseSchema", () => {
   });
 });
 
+describe("NormalizeRequestSchema", () => {
+  it("accepts text with today's date and nothing else", () => {
+    const parsed = NormalizeRequestSchema.parse({
+      text: "did squats 3x5 at 100",
+      todayLocalDate: "2026-09-06",
+    });
+    expect(parsed.text).toContain("squats");
+  });
+
+  it("rejects empty text, oversized text, and a non-ISO date", () => {
+    expect(() =>
+      NormalizeRequestSchema.parse({ text: "", todayLocalDate: "2026-09-06" }),
+    ).toThrow();
+    expect(() =>
+      NormalizeRequestSchema.parse({
+        text: "a".repeat(AI_LIMITS.maxNormalizeTextChars + 1),
+        todayLocalDate: "2026-09-06",
+      }),
+    ).toThrow();
+    expect(() =>
+      NormalizeRequestSchema.parse({ text: "squats", todayLocalDate: "06.09.2026" }),
+    ).toThrow();
+  });
+
+  it("ignores a userId smuggled into the body", () => {
+    const parsed = NormalizeRequestSchema.parse({
+      text: "squats",
+      todayLocalDate: "2026-09-06",
+      userId: "someone-else",
+    });
+    expect(parsed).not.toHaveProperty("userId");
+  });
+});
+
+describe("NormalizeResponseSchema", () => {
+  const normalization = {
+    provider: "cloudflare",
+    model: "@cf/meta/llama-4-scout-17b-16e-instruct",
+    promptVersion: "normalizer/1",
+    requestId: "req-1",
+    latencyMs: 900,
+    attempts: 1,
+  };
+
+  it("accepts notation with an optional date and provenance", () => {
+    const parsed = NormalizeResponseSchema.parse({
+      notation: "Back squat: 3x5 (100kg)",
+      localDate: "2026-08-31",
+      normalization,
+    });
+    expect(parsed.localDate).toBe("2026-08-31");
+    const noDate = NormalizeResponseSchema.parse({
+      notation: "Back squat: 3x5 (100kg)",
+      localDate: null,
+      normalization,
+    });
+    expect(noDate.localDate).toBeNull();
+  });
+
+  it("rejects an empty rewrite", () => {
+    expect(() =>
+      NormalizeResponseSchema.parse({ notation: "", localDate: null, normalization }),
+    ).toThrow();
+  });
+});
+
 describe("HealthResponseSchema", () => {
-  it("reports the one configured model", () => {
+  it("reports both configured models", () => {
     const parsed = HealthResponseSchema.parse({
       status: "ok",
       service: "ai-worker",
       provider: "cloudflare",
-      models: { stt: "@cf/openai/whisper-large-v3-turbo" },
+      models: {
+        stt: "@cf/openai/whisper-large-v3-turbo",
+        normalizer: "@cf/meta/llama-4-scout-17b-16e-instruct",
+      },
       requestId: "req-1",
     });
     expect(parsed.models.stt).toContain("whisper");
+    expect(parsed.models.normalizer).toContain("llama");
   });
 });

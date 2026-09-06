@@ -11,6 +11,7 @@ export * from "./benchmark-library.js";
 export * from "./activity.js";
 export * from "./session.js";
 export * from "./workbook.js";
+export * from "./entry-date.js";
 
 // `sql-enums.ts` and `seed-sql.ts` are deliberately NOT re-exported here. They
 // are build-time generators that import `node:url`, and this barrel is imported

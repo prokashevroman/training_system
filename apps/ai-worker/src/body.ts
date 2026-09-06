@@ -40,3 +40,50 @@ export function validate<S extends ZodTypeAny>(
   }
   return parsed.data;
 }
+
+/**
+ * Reads and validates a JSON body, with the byte limit enforced *before*
+ * anything expensive happens. `Content-Length` is checked first so an oversized
+ * upload is rejected without buffering it; the length of what actually arrived
+ * is checked too, because a chunked request has no `Content-Length` to trust.
+ */
+export async function readJson<S extends ZodTypeAny>(
+  request: Request,
+  schema: S,
+  maxBytes: number,
+  what: string,
+): Promise<z.output<S>> {
+  const declared = request.headers.get("content-length");
+  if (declared !== null) {
+    const size = Number(declared);
+    if (Number.isFinite(size) && size > maxBytes) {
+      throw new AiHttpError("payload_too_large", "Request body is too large.", {
+        maxBytes,
+        declaredBytes: size,
+      });
+    }
+  }
+
+  const buffer = await request.arrayBuffer();
+  if (buffer.byteLength > maxBytes) {
+    throw new AiHttpError("payload_too_large", "Request body is too large.", {
+      maxBytes,
+      actualBytes: buffer.byteLength,
+    });
+  }
+
+  let text: string;
+  try {
+    // workerd's TextDecoderConstructorOptions requires both fields.
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: false }).decode(buffer);
+  } catch {
+    throw new AiHttpError("schema_invalid", "Request body is not valid UTF-8.");
+  }
+  let json: unknown;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new AiHttpError("schema_invalid", "Request body is not valid JSON.");
+  }
+  return validate(schema, json, what);
+}

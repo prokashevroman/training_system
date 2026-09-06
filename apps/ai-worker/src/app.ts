@@ -4,6 +4,7 @@ import { corsHeaders, evaluateCors, preflightResponse } from "./cors.js";
 import type { WorkerEnv } from "./env.js";
 import { resolveConfig } from "./env.js";
 import type { RequestContext } from "./handlers/context.js";
+import { handleNormalize } from "./handlers/normalize.js";
 import { handleTranscribe } from "./handlers/transcribe.js";
 import { AiHttpError, errorResponse, jsonResponse } from "./http-error.js";
 import { createLogger } from "./log.js";
@@ -11,7 +12,7 @@ import { selectProviders } from "./providers/index.js";
 import { enforceRateLimit } from "./rate-limit.js";
 
 /**
- * Request pipeline. Hand-rolled rather than a framework: one route does not
+ * Request pipeline. Hand-rolled rather than a framework: two routes do not
  * justify a dependency, and the order below is the security contract, so it is
  * worth having in one readable place.
  *
@@ -28,6 +29,7 @@ type Handler = (context: RequestContext) => Promise<unknown>;
 
 const ROUTES: ReadonlyArray<{ method: string; path: string; handler: Handler }> = [
   { method: "POST", path: "/v1/transcriptions", handler: handleTranscribe },
+  { method: "POST", path: "/v1/normalizations", handler: handleNormalize },
 ];
 
 /** Accepts a caller-supplied id only if it is short and safe to log verbatim. */

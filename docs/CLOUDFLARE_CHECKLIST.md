@@ -166,18 +166,22 @@ npx wrangler whoami
 nothing to commit by accident.
 **Worked when:** `whoami` prints your email and account ID.
 
-### 10. Check the model ID is still current
+### 10. Check the model IDs are still current
 
 **Where:** browser → <https://developers.cloudflare.com/workers-ai/models/>.
 
-**Why:** a deprecated ID fails at the first real request, not at deploy. Since
-the 2026-08 simplification the Worker calls exactly one model — Whisper for
-transcription. There is no parser and no planner any more; the transcript is
-saved as-is and the athlete adds structure by hand if they want it.
+**Why:** a deprecated ID fails at the first real request, not at deploy. The
+Worker calls exactly two models: Whisper for transcription, and a chat model
+that rewrites chaotic entry text into parser notation (`/v1/normalizations`,
+added 2026-09). The rewrite is text, not structured data — the browser's
+deterministic parser decides what becomes rows, so there is still no parser
+model and no planner.
 
-**Worked when:** `@cf/openai/whisper-large-v3-turbo` is present and
-non-deprecated. If it moves, change only `STT_MODEL` — model IDs live nowhere
-else.
+**Worked when:** `@cf/openai/whisper-large-v3-turbo` and
+`@cf/meta/llama-4-scout-17b-16e-instruct` are present and non-deprecated. If
+either moves, change only `STT_MODEL` / `NORMALIZER_MODEL` — model IDs live
+nowhere else. The normalizer must be a NON-REASONING chat model (a `<think>`
+preamble breaks its JSON output).
 
 ### 11. Fix `wrangler.jsonc` before deploying — do not skip this
 
@@ -252,8 +256,9 @@ curl -s https://training-ai-worker.<subdomain>.workers.dev/health | jq
 ```
 
 **Why:** the one check that catches a deploy which silently kept the mock provider.
-**Worked when:** `"provider": "cloudflare"` and
-`"models": { "stt": "@cf/openai/whisper-large-v3-turbo" }`. If it says `mock`,
+**Worked when:** `"provider": "cloudflare"` and `"models"` names both real IDs —
+`"stt": "@cf/openai/whisper-large-v3-turbo"` and
+`"normalizer": "@cf/meta/llama-4-scout-17b-16e-instruct"`. If it says `mock`,
 the deployed `vars` are wrong and the app is returning a fabricated transcript.
 
 ### 16. Give Vercel the three environment variables

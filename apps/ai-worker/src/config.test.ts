@@ -15,9 +15,16 @@ describe("resolveConfig", () => {
     expect(resolveConfig({ AI_PROVIDER: " cloudflare " }).provider).toBe("cloudflare");
   });
 
-  it("leaves the model ID null when unset rather than inventing a default", () => {
+  it("leaves the model IDs null when unset rather than inventing defaults", () => {
     const config = resolveConfig({});
-    expect(config.models).toEqual({ stt: null });
+    expect(config.models).toEqual({ stt: null, normalizer: null });
+  });
+
+  it("reads the normalizer model and text limits from the environment", () => {
+    expect(resolveConfig({ NORMALIZER_MODEL: " @cf/x " }).models.normalizer).toBe("@cf/x");
+    expect(resolveConfig({}).limits.maxTextChars).toBe(AI_LIMITS.maxNormalizeTextChars);
+    expect(resolveConfig({}).limits.maxJsonBodyBytes).toBe(AI_LIMITS.maxJsonBodyBytes);
+    expect(resolveConfig({ MAX_TEXT_CHARS: "500" }).limits.maxTextChars).toBe(500);
   });
 
   it("falls back to the shared limits and overrides them from the environment", () => {

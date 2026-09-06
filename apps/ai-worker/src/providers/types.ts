@@ -8,5 +8,6 @@ import type { AiProviderSet } from "@training/ai-contracts";
 export interface WorkerProviders extends AiProviderSet {
   readonly models: {
     readonly stt: string;
+    readonly normalizer: string;
   };
 }
