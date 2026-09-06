@@ -209,6 +209,9 @@ describe("every parsed shape reaches a table", () => {
       expect(row.activity_id).toBe(activityId);
       expect(row.user_id).toBe(USER);
     }
+    // The first interval's 4:09 must NOT be stamped as the activity's average
+    // pace — nobody recorded an average; the per-interval paces are the facts.
+    expect(bundle.activities[0]!.avg_pace_seconds_per_km).toBeNull();
   });
 
   it("saves a benchmark with its splits and the definition link", () => {

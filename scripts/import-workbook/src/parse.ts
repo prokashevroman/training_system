@@ -310,9 +310,20 @@ function buildActivity(
     originalText: iv.originalText,
   }));
 
+  const fields = metricsToActivityFields(metrics);
+  // A `Fast intervals pace: 4:09 - 3:58 - ...` line yields `work` intervals,
+  // but the metric merge also reads its FIRST value as a pace. That number is
+  // one interval's pace, not an average anyone recorded — stamping it on the
+  // activity would fabricate an average. The per-interval paces are the facts;
+  // the activity-level average stays null. Rowing `split` intervals are
+  // unaffected: their single steady piece states one genuine pace.
+  if (cardioIntervals.some((iv) => iv.intervalType === "work")) {
+    fields.avgPaceSecondsPerKm = null;
+  }
+
   return {
     ...base,
-    ...metricsToActivityFields(metrics),
+    ...fields,
     cardioIntervals,
     notes: noteLines.length > 0 ? noteLines.join("\n") : null,
   };
